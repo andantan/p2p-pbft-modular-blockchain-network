@@ -4,6 +4,17 @@ else
 	CLEAR_COMMAND = @clear
 endif
 
+test:
+	@go test ./...
+
+test-verbose:
+	@go test -v ./...
+
+test-race:
+	@go test -race ./...
+
+test-race-verbose:
+	@go test -v -race ./...
 
 build:
 	@go build -o ./bin/exec
