@@ -1,4 +1,4 @@
-package atomic
+package types
 
 import (
 	"github.com/stretchr/testify/assert"
@@ -8,7 +8,7 @@ import (
 )
 
 func TestMap_BasicCRUD(t *testing.T) {
-	m := NewMap[string, int]()
+	m := NewAtomicMap[string, int]()
 
 	// Put & Len
 	m.Put("apple", 10)
@@ -34,7 +34,7 @@ func TestMap_BasicCRUD(t *testing.T) {
 }
 
 func TestMap_PutIfNotExists(t *testing.T) {
-	m := NewMap[string, int]()
+	m := NewAtomicMap[string, int]()
 
 	added := m.PutIfNotExists("apple", 100)
 	assert.True(t, added)
@@ -47,7 +47,7 @@ func TestMap_PutIfNotExists(t *testing.T) {
 }
 
 func TestMap_Clear(t *testing.T) {
-	m := NewMap[string, int]()
+	m := NewAtomicMap[string, int]()
 	m.Put("a", 1)
 	m.Put("b", 2)
 	m.Clear()
@@ -56,7 +56,7 @@ func TestMap_Clear(t *testing.T) {
 }
 
 func TestMap_KeysValuesAndIterator(t *testing.T) {
-	m := NewMap[string, int]()
+	m := NewAtomicMap[string, int]()
 	m.Put("a", 1)
 	m.Put("b", 2)
 
@@ -77,7 +77,7 @@ func TestMap_KeysValuesAndIterator(t *testing.T) {
 }
 
 func TestMap_RaceCondition(t *testing.T) {
-	m := NewMap[string, int]()
+	m := NewAtomicMap[string, int]()
 	var wg sync.WaitGroup
 	numGoroutines := 100
 

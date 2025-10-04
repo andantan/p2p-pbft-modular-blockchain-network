@@ -1,4 +1,4 @@
-package atomic
+package types
 
 import (
 	"github.com/stretchr/testify/assert"
@@ -9,7 +9,7 @@ import (
 func TestAtomicNumber_SignedInt(t *testing.T) {
 	num := NewAtomicNumber[int](10)
 
-	// Get & Set
+	// Get & AtomicSet
 	assert.Equal(t, 10, num.Get())
 	num.Set(100)
 	assert.Equal(t, 100, num.Get())

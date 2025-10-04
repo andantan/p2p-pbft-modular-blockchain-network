@@ -1,4 +1,4 @@
-package atomic
+package types
 
 import (
 	"github.com/stretchr/testify/assert"
@@ -8,7 +8,7 @@ import (
 )
 
 func TestSet_BasicOperations(t *testing.T) {
-	s := NewSet[string]()
+	s := NewAtomicSet[string]()
 
 	// Put & Len
 	s.Put("apple")
@@ -28,7 +28,7 @@ func TestSet_BasicOperations(t *testing.T) {
 }
 
 func TestSet_Clear(t *testing.T) {
-	s := NewSet[int]()
+	s := NewAtomicSet[int]()
 	s.Put(1)
 	s.Put(2)
 	s.Clear()
@@ -37,7 +37,7 @@ func TestSet_Clear(t *testing.T) {
 }
 
 func TestSet_ValuesAndIterator(t *testing.T) {
-	s := NewSet[string]()
+	s := NewAtomicSet[string]()
 	s.Put("a")
 	s.Put("b")
 
@@ -54,7 +54,7 @@ func TestSet_ValuesAndIterator(t *testing.T) {
 }
 
 func TestSet_RaceCondition(t *testing.T) {
-	s := NewSet[string]()
+	s := NewAtomicSet[string]()
 	var wg sync.WaitGroup
 	numGoroutines := 100
 

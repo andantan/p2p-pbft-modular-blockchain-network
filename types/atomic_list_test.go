@@ -1,4 +1,4 @@
-package atomic
+package types
 
 import (
 	"github.com/stretchr/testify/assert"
@@ -7,7 +7,7 @@ import (
 )
 
 func TestList_ConcurrentInsert(t *testing.T) {
-	list := NewList[int]()
+	list := NewAtomicList[int]()
 	var wg sync.WaitGroup
 	numGoroutines := 100
 	numInsertsPerGoroutine := 10
@@ -29,7 +29,7 @@ func TestList_ConcurrentInsert(t *testing.T) {
 }
 
 func TestList_ConcurrentReadWrite(t *testing.T) {
-	list := NewList[int]()
+	list := NewAtomicList[int]()
 	var wg sync.WaitGroup
 	numGoroutines := 50
 
@@ -71,7 +71,7 @@ func TestList_ConcurrentReadWrite(t *testing.T) {
 }
 
 func TestList_IteratorConcurrent(t *testing.T) {
-	list := NewList[int]()
+	list := NewAtomicList[int]()
 	for i := 0; i < 1000; i++ {
 		list.Insert(i)
 	}

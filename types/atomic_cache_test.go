@@ -1,4 +1,4 @@
-package atomic
+package types
 
 import (
 	"github.com/stretchr/testify/assert"
@@ -8,7 +8,7 @@ import (
 )
 
 func TestCache_BasicCRUD(t *testing.T) {
-	c := NewCache[string, int]()
+	c := NewAtomicCache[string, int]()
 
 	// Add & Count
 	c.Add("apple", 10)
@@ -33,7 +33,7 @@ func TestCache_BasicCRUD(t *testing.T) {
 }
 
 func TestCache_Prune(t *testing.T) {
-	c := NewCache[string, int]()
+	c := NewAtomicCache[string, int]()
 	c.Add("a", 1)
 	c.Add("b", 2)
 	c.Add("c", 3)
@@ -49,7 +49,7 @@ func TestCache_Prune(t *testing.T) {
 }
 
 func TestCache_First(t *testing.T) {
-	c := NewCache[string, string]()
+	c := NewAtomicCache[string, string]()
 	c.Add("second", "B")
 	c.Add("first", "A")
 
@@ -59,7 +59,7 @@ func TestCache_First(t *testing.T) {
 }
 
 func TestCache_Clear(t *testing.T) {
-	c := NewCache[string, int]()
+	c := NewAtomicCache[string, int]()
 	c.Add("a", 1)
 	c.Clear()
 	assert.Equal(t, 0, c.Count())
@@ -67,7 +67,7 @@ func TestCache_Clear(t *testing.T) {
 }
 
 func TestCache_ValuesAndIterators(t *testing.T) {
-	c := NewCache[string, int]()
+	c := NewAtomicCache[string, int]()
 	c.Add("a", 1)
 	c.Add("b", 2)
 	c.Add("c", 3)
@@ -90,7 +90,7 @@ func TestCache_ValuesAndIterators(t *testing.T) {
 }
 
 func TestCache_RaceCondition(t *testing.T) {
-	c := NewCache[string, int]()
+	c := NewAtomicCache[string, int]()
 	var wg sync.WaitGroup
 	numGoroutines := 100
 

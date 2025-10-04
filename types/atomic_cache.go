@@ -1,24 +1,23 @@
-package atomic
+package types
 
 import (
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/types"
 	"sync"
 )
 
-type Cache[K comparable, V any] struct {
+type AtomicCache[K comparable, V any] struct {
 	lock    sync.RWMutex
 	lookup  map[K]V
-	ordered *types.List[K]
+	ordered *List[K]
 }
 
-func NewCache[K comparable, V any]() *Cache[K, V] {
-	return &Cache[K, V]{
+func NewAtomicCache[K comparable, V any]() *AtomicCache[K, V] {
+	return &AtomicCache[K, V]{
 		lookup:  make(map[K]V),
-		ordered: types.NewList[K](),
+		ordered: NewList[K](),
 	}
 }
 
-func (c *Cache[K, V]) Add(k K, v V) {
+func (c *AtomicCache[K, V]) Add(k K, v V) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -28,7 +27,7 @@ func (c *Cache[K, V]) Add(k K, v V) {
 	}
 }
 
-func (c *Cache[K, V]) Get(k K) (V, bool) {
+func (c *AtomicCache[K, V]) Get(k K) (V, bool) {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
@@ -36,7 +35,7 @@ func (c *Cache[K, V]) Get(k K) (V, bool) {
 	return val, ok
 }
 
-func (c *Cache[K, V]) Remove(k K) {
+func (c *AtomicCache[K, V]) Remove(k K) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -49,7 +48,7 @@ func (c *Cache[K, V]) Remove(k K) {
 	}
 }
 
-func (c *Cache[K, V]) Prune(keysToRemove []K) {
+func (c *AtomicCache[K, V]) Prune(keysToRemove []K) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -75,21 +74,21 @@ func (c *Cache[K, V]) Prune(keysToRemove []K) {
 	c.ordered.SetData(newOrderedKeys)
 }
 
-func (c *Cache[K, V]) First() (K, error) {
+func (c *AtomicCache[K, V]) First() (K, error) {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
 	return c.ordered.First()
 }
 
-func (c *Cache[K, V]) Count() int {
+func (c *AtomicCache[K, V]) Count() int {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
 	return len(c.lookup)
 }
 
-func (c *Cache[K, V]) Contains(k K) bool {
+func (c *AtomicCache[K, V]) Contains(k K) bool {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
@@ -97,7 +96,7 @@ func (c *Cache[K, V]) Contains(k K) bool {
 	return ok
 }
 
-func (c *Cache[K, V]) Clear() {
+func (c *AtomicCache[K, V]) Clear() {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -105,11 +104,11 @@ func (c *Cache[K, V]) Clear() {
 	c.ordered.Clear()
 }
 
-func (c *Cache[K, V]) GetLookup() map[K]V {
+func (c *AtomicCache[K, V]) GetLookup() map[K]V {
 	return c.lookup
 }
 
-func (c *Cache[K, V]) Values() []V {
+func (c *AtomicCache[K, V]) Values() []V {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
@@ -124,7 +123,7 @@ func (c *Cache[K, V]) Values() []V {
 	return values
 }
 
-func (c *Cache[K, V]) LookupIterator() func(yield func(K, V) bool) {
+func (c *AtomicCache[K, V]) LookupIterator() func(yield func(K, V) bool) {
 	return func(yield func(K, V) bool) {
 		c.lock.RLock()
 		defer c.lock.RUnlock()
@@ -137,7 +136,7 @@ func (c *Cache[K, V]) LookupIterator() func(yield func(K, V) bool) {
 	}
 }
 
-func (c *Cache[K, V]) OrderedIterator() func(yield func(K) bool) {
+func (c *AtomicCache[K, V]) OrderedIterator() func(yield func(K) bool) {
 	return func(yield func(K) bool) {
 		c.lock.RLock()
 		defer c.lock.RUnlock()

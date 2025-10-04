@@ -1,39 +1,39 @@
-package atomic
+package types
 
 import "sync"
 
-type Map[K comparable, V any] struct {
+type AtomicMap[K comparable, V any] struct {
 	lock sync.RWMutex
 	m    map[K]V
 }
 
-func NewMap[K comparable, V any]() *Map[K, V] {
-	return &Map[K, V]{
+func NewAtomicMap[K comparable, V any]() *AtomicMap[K, V] {
+	return &AtomicMap[K, V]{
 		m: make(map[K]V),
 	}
 }
 
-func (m *Map[K, V]) Get(k K) (V, bool) {
+func (m *AtomicMap[K, V]) Get(k K) (V, bool) {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
 	val, ok := m.m[k]
 	return val, ok
 }
 
-func (m *Map[K, V]) Put(k K, v V) {
+func (m *AtomicMap[K, V]) Put(k K, v V) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	m.m[k] = v
 }
 
-func (m *Map[K, V]) Exists(k K) bool {
+func (m *AtomicMap[K, V]) Exists(k K) bool {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
 	_, ok := m.m[k]
 	return ok
 }
 
-func (m *Map[K, V]) PutIfNotExists(k K, v V) bool {
+func (m *AtomicMap[K, V]) PutIfNotExists(k K, v V) bool {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -46,25 +46,25 @@ func (m *Map[K, V]) PutIfNotExists(k K, v V) bool {
 	return true
 }
 
-func (m *Map[K, V]) Len() int {
+func (m *AtomicMap[K, V]) Len() int {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
 	return len(m.m)
 }
 
-func (m *Map[K, V]) Remove(k K) {
+func (m *AtomicMap[K, V]) Remove(k K) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	delete(m.m, k)
 }
 
-func (m *Map[K, V]) Clear() {
+func (m *AtomicMap[K, V]) Clear() {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	m.m = make(map[K]V)
 }
 
-func (m *Map[K, V]) Keys() []K {
+func (m *AtomicMap[K, V]) Keys() []K {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
 
@@ -76,7 +76,7 @@ func (m *Map[K, V]) Keys() []K {
 	return keys
 }
 
-func (m *Map[K, V]) Values() []V {
+func (m *AtomicMap[K, V]) Values() []V {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
 
@@ -88,7 +88,7 @@ func (m *Map[K, V]) Values() []V {
 	return values
 }
 
-func (m *Map[K, V]) Iterator() func(yield func(K, V) bool) {
+func (m *AtomicMap[K, V]) Iterator() func(yield func(K, V) bool) {
 	return func(yield func(K, V) bool) {
 		m.lock.RLock()
 		defer m.lock.RUnlock()
