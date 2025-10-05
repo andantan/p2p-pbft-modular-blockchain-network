@@ -11,13 +11,15 @@ import (
 )
 
 var (
-	txx5000   = generateTransactions(5000)
-	txx30000  = generateTransactions(30000)
-	txx200000 = generateTransactions(200000)
+	txx5000    = generateTransactions(5000)
+	txx30000   = generateTransactions(30000)
+	txx200000  = generateTransactions(200000)
+	txx1000000 = generateTransactions(1000000)
 
-	protoTxx5000   = transactionsToProto(txx5000)
-	protoTxx30000  = transactionsToProto(txx30000)
-	protoTxx200000 = transactionsToProto(txx200000)
+	protoTxx5000    = transactionsToProto(txx5000)
+	protoTxx30000   = transactionsToProto(txx30000)
+	protoTxx200000  = transactionsToProto(txx200000)
+	protoTxx1000000 = transactionsToProto(txx1000000)
 )
 
 func generateTransactions(n int) []*Transaction {
@@ -71,6 +73,12 @@ func BenchmarkGobEncode_200000(b *testing.B) {
 func BenchmarkGobDecode_200000(b *testing.B) {
 	benchmarkGobDecode(txx200000, b)
 }
+func BenchmarkGobEncode_1000000(b *testing.B) {
+	benchmarkGobEncode(txx1000000, b)
+}
+func BenchmarkGobDecode_1000000(b *testing.B) {
+	benchmarkGobDecode(txx1000000, b)
+}
 
 // ===== Protobuf benchmark =====
 
@@ -117,4 +125,10 @@ func BenchmarkProtoEncode_200000(b *testing.B) {
 }
 func BenchmarkProtoDecode_200000(b *testing.B) {
 	benchmarkProtoDecode(protoTxx200000, b)
+}
+func BenchmarkProtoEncode_1000000(b *testing.B) {
+	benchmarkProtoEncode(protoTxx1000000, b)
+}
+func BenchmarkProtoDecode_1000000(b *testing.B) {
+	benchmarkProtoDecode(protoTxx1000000, b)
 }

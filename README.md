@@ -1,49 +1,43 @@
-네, 마크다운(Markdown)으로 작성된 `README.md` 파일에 붙여 넣었을 때 GitHub 등에서 실제로 어떻게 보일지 전체 내용을 보여드리겠습니다.
 
 ---
+## Transaction Codec Benchmarks
 
-# Benchmarks: Gob vs. Protocol Buffers
+This benchmark compares the performance of Go's native `gob` encoding with Protocol Buffers (`protobuf`) for serializing and deserializing large slices of `Transaction` objects. The goal is to measure raw serialization speed, memory usage, and the number of memory allocations.
 
-This benchmark compares the performance of Go's native `gob` encoding with Protocol Buffers (`protobuf`) for serializing and deserializing large slices of `Transaction` objects.
-
-## Results
+### Results
 
 Tests were run on an `Intel(R) Core(TM) i5-1035G7 CPU @ 1.20GHz`.
 
 | Benchmark (Transactions) | Library  | Speed (ns/op)   | Memory Usage (B/op) | Allocations (allocs/op) |
 |:-------------------------|:---------|:----------------|:--------------------|:------------------------|
-| **Encode 5,000**         | Gob      | 9,821,608       | -                   | -                       |
-| **Encode 5,000**         | Protobuf | **2,588,184**   | -                   | -                       |
-| **Decode 5,000**         | Gob      | 7,674,553       | 13,320,337          | 65,222                  |
-| **Decode 5,000**         | Protobuf | **3,666,268**   | **6,474,809**       | **20,017**              |
+| **Encode 5,000**         | Gob      | 11,998,771      | -                   | -                       |
+| **Encode 5,000**         | Protobuf | **2,562,078**   | -                   | -                       |
+| **Decode 5,000**         | Gob      | 12,166,677      | 13,320,336          | 65,222                  |
+| **Decode 5,000**         | Protobuf | **4,629,081**   | **6,474,808**       | **20,017**              |
 |                          |          |                 |                     |                         |
-| **Encode 30,000**        | Gob      | 88,521,328      | -                   | -                       |
-| **Encode 30,000**        | Protobuf | **14,699,608**  | -                   | -                       |
-| **Decode 30,000**        | Gob      | 90,782,558      | 164,235,492         | 390,226                 |
-| **Decode 30,000**        | Protobuf | **24,472,020**  | **39,221,692**      | **120,024**             |
+| **Encode 30,000**        | Gob      | 78,197,932      | -                   | -                       |
+| **Encode 30,000**        | Protobuf | **15,754,172**  | -                   | -                       |
+| **Decode 30,000**        | Gob      | 86,894,333      | 164,235,476         | 390,226                 |
+| **Decode 30,000**        | Protobuf | **21,556,347**  | **39,221,688**      | **120,024**             |
 |                          |          |                 |                     |                         |
-| **Encode 200,000**       | Gob      | 549,716,350     | -                   | -                       |
-| **Encode 200,000**       | Protobuf | **94,580,846**  | -                   | -                       |
-| **Decode 200,000**       | Gob      | 551,518,800     | 1,375,447,032       | 2,600,237               |
-| **Decode 200,000**       | Protobuf | **133,067,488** | **261,900,508**     | **800,033**             |
+| **Encode 200,000**       | Gob      | 483,209,533     | -                   | -                       |
+| **Encode 200,000**       | Protobuf | **97,737,946**  | -                   | -                       |
+| **Decode 200,000**       | Gob      | 658,466,850     | 1,375,446,912       | 2,600,235               |
+| **Decode 200,000**       | Protobuf | **149,541,586** | **261,900,478**     | **800,032**             |
+|                          |          |                 |                     |                         |
+| **Encode 1,000,000**     | Gob      | 2,946,477,600   | -                   | -                       |
+| **Encode 1,000,000**     | Protobuf | **445,870,533** | -                   | -                       |
+| **Decode 1,000,000**     | Gob      | 3,955,368,900   | 8,510,050,272       | 13,000,247              |
+| **Decode 1,000,000**     | Protobuf | **670,815,550** | **1,308,948,688**   | **4,000,040**           |
 
 *Lower values are better.*
 
-## Analysis 🧐
+### Analysis 🧐
 
-The results clearly demonstrate that Protocol Buffers significantly outperforms Gob in all metrics, with the performance gap widening as the data size increases.
+The results clearly demonstrate that **Protocol Buffers is significantly superior to Gob** across all tested metrics, especially as the number of transactions increases.
 
-#### Speed (ns/op) 🚀
+-   **Speed 🚀**: Protobuf is consistently **4 to 6 times faster** in both encoding and decoding operations. This is primarily because Protobuf uses pre-generated, highly optimized serialization code, whereas Gob relies on runtime reflection, which is inherently slower.
 
--   **Encoding**: Protobuf is **~4-6 times faster** than Gob.
--   **Decoding**: Protobuf is **~2-4 times faster** than Gob.
--   **Reason**: Protobuf uses highly optimized, pre-generated code for serialization, whereas Gob relies on Go's runtime reflection, which introduces significant overhead.
+-   **Memory Efficiency 📉**: During decoding, Protobuf uses **5 to 6 times less memory** and makes approximately **3 times fewer memory allocations**. This is due to Protobuf's compact binary format, which uses numeric tags instead of field names, resulting in a much smaller data footprint. The lower allocation count significantly reduces pressure on the garbage collector (GC), which is critical for the performance of a long-running service like a blockchain node.
 
-#### Memory Usage & Allocations (B/op, allocs/op) 📉
-
--   Protobuf uses approximately **5 times less memory** and makes **3 times fewer memory allocations** during decoding.
--   **Reason**: The Protobuf binary format is more compact. It uses numeric field tags instead of full field names, resulting in a smaller data footprint. Fewer allocations reduce pressure on the garbage collector (GC), leading to better overall application performance.
-
-## Conclusion ✅
-
-For a high-performance, distributed system like a blockchain, **Protocol Buffers is the superior choice**. While `gob` offers simplicity for Go-only projects, Protobuf provides critical advantages in speed, data size, and memory efficiency, making it the standard for performance-sensitive network applications.
+**Conclusion**: For a performance-critical application like a blockchain, Protobuf is the clear winner, offering substantial improvements in speed, memory usage, and overall system efficiency.
