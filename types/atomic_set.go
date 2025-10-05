@@ -19,6 +19,18 @@ func (s *AtomicSet[K]) Put(k K) {
 	s.m[k] = struct{}{}
 }
 
+func (s *AtomicSet[K]) PutIfNotExist(k K) bool {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	if _, ok := s.m[k]; ok {
+		return false
+	}
+
+	s.m[k] = struct{}{}
+	return true
+}
+
 func (s *AtomicSet[K]) Contains(k K) bool {
 	s.lock.RLock()
 	defer s.lock.RUnlock()

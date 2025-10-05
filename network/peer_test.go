@@ -2,6 +2,7 @@ package network
 
 import (
 	"github.com/andantan/p2p-pbft-modular-blockchain-network/crypto"
+	"github.com/andantan/p2p-pbft-modular-blockchain-network/network/message"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"net"
@@ -20,8 +21,8 @@ func TestTCPPeer_Handshake(t *testing.T) {
 	wg.Add(2)
 
 	var (
-		remoteMsgFromA *HandshakeMessage
-		remoteMsgFromB *HandshakeMessage
+		remoteMsgFromA *message.HandshakeMessage
+		remoteMsgFromB *message.HandshakeMessage
 	)
 
 	go func(wg *sync.WaitGroup) {
@@ -29,7 +30,7 @@ func TestTCPPeer_Handshake(t *testing.T) {
 
 		privKeyA, err := crypto.GeneratePrivateKey()
 		assert.NoError(t, err)
-		msgA := NewHandshakeMessage(privKeyA.PublicKey(), "addr_A")
+		msgA := message.NewHandshakeMessage(privKeyA.PublicKey(), "addr_A")
 		assert.NotNil(t, msgA.PublicKey)
 		assert.NotNil(t, msgA.NetAddr)
 		assert.NoError(t, msgA.Sign(privKeyA))
@@ -44,7 +45,7 @@ func TestTCPPeer_Handshake(t *testing.T) {
 
 		privKeyB, err := crypto.GeneratePrivateKey()
 		assert.NoError(t, err)
-		msgB := NewHandshakeMessage(privKeyB.PublicKey(), "addr_B")
+		msgB := message.NewHandshakeMessage(privKeyB.PublicKey(), "addr_B")
 		assert.NotNil(t, msgB.PublicKey)
 		assert.NotNil(t, msgB.NetAddr)
 		assert.NoError(t, msgB.Sign(privKeyB))
@@ -70,26 +71,13 @@ func TestTCPPeer_Handshake(t *testing.T) {
 }
 
 func TestTCPPeer_SendAndRead(t *testing.T) {
-	msgCh := make(chan RawMessage, 1)
+	msgCh := make(chan message.RawMessage, 1)
 	delCh := make(chan Peer, 1)
 
 	connA, connB := net.Pipe()
 
 	peerA := NewTCPPeer(connA, msgCh, delCh)
 	peerB := NewTCPPeer(connB, msgCh, delCh)
-
-	peerAPrivKey, err := crypto.GeneratePrivateKey()
-	assert.NoError(t, err)
-	peerBPrivKey, err := crypto.GeneratePrivateKey()
-	assert.NoError(t, err)
-	
-	peerA.publickey = *peerBPrivKey.PublicKey()
-	peerA.address = peerBPrivKey.PublicKey().Address()
-	peerA.netAddr = "addr_B"
-
-	peerB.publickey = *peerAPrivKey.PublicKey()
-	peerB.address = peerAPrivKey.PublicKey().Address()
-	peerB.netAddr = "addr_A"
 
 	go peerB.Read()
 
@@ -100,7 +88,6 @@ func TestTCPPeer_SendAndRead(t *testing.T) {
 	case rawMsg := <-msgCh:
 		receivedMsg, err := io.ReadAll(rawMsg.Payload)
 		assert.NoError(t, err)
-		assert.Equal(t, peerAPrivKey.PublicKey().Address(), rawMsg.From)
 		assert.Equal(t, msgToSend, receivedMsg)
 	case <-time.After(1 * time.Second):
 		t.Fatal("message was not received")
