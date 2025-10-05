@@ -162,6 +162,7 @@ func (n *TCPNode) handshakeAndValidate(conn net.Conn) {
 		if isInbound && isLargerId {
 			_ = n.logger.Log("msg", "tie-breaking: dropping inbound from lower ID peer")
 			_ = conn.Close()
+			n.Remove(peer)
 		}
 
 		return

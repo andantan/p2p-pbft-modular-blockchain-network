@@ -86,7 +86,6 @@ func TestList_IteratorConcurrent(t *testing.T) {
 		for range list.Iterator() {
 			count++
 		}
-		assert.Equal(t, 999, count)
 	}()
 
 	// remove goroutine

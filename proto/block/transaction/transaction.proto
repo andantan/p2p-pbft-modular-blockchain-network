@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package core;
+option go_package = "github.com/andantan/p2p-pbft-modular-blockchain-network/proto/block/transaction";
+
+message Transaction {
+  bytes data = 1;
+  bytes from = 2; // sender public-key
+  bytes signature = 3;
+  uint64 nonce = 4;
+}
