@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/andantan/p2p-pbft-modular-blockchain-network/codec"
 	"github.com/andantan/p2p-pbft-modular-blockchain-network/crypto"
+	"github.com/andantan/p2p-pbft-modular-blockchain-network/network/message"
 	"github.com/andantan/p2p-pbft-modular-blockchain-network/types"
 	"github.com/andantan/p2p-pbft-modular-blockchain-network/util"
 	"github.com/go-kit/log"
@@ -20,29 +21,29 @@ type Peer interface {
 	PublicKey() *crypto.PublicKey
 	Address() types.Address
 	NetAddr() string
-	Handshake(*HandshakeMessage) (*HandshakeMessage, error)
+	Handshake(*message.HandshakeMessage) (*message.HandshakeMessage, error)
 	Send(payload []byte) error
 	Read()
 	Close()
 }
 
 type TCPPeer struct {
-	publickey crypto.PublicKey // handshake data
-	address   types.Address    // handshake data
-	netAddr   string           // handshake data
+	publickey crypto.PublicKey
+	address   types.Address
+	netAddr   string
 
 	logger log.Logger
 
 	conn net.Conn
 
-	msgCh chan RawMessage
+	msgCh chan message.RawMessage
 	delCh chan Peer
 
 	closeCh   chan struct{}
 	closeOnce sync.Once
 }
 
-func NewTCPPeer(conn net.Conn, msgCh chan RawMessage, delCh chan Peer) *TCPPeer {
+func NewTCPPeer(conn net.Conn, msgCh chan message.RawMessage, delCh chan Peer) Peer {
 	return &TCPPeer{
 		logger:  util.LoggerWithPrefixes("Peer", conn.RemoteAddr().String()),
 		conn:    conn,
@@ -64,8 +65,8 @@ func (p *TCPPeer) NetAddr() string {
 	return p.netAddr
 }
 
-func (p *TCPPeer) Handshake(our *HandshakeMessage) (*HandshakeMessage, error) {
-	msgCh := make(chan *HandshakeMessage, 1)
+func (p *TCPPeer) Handshake(our *message.HandshakeMessage) (*message.HandshakeMessage, error) {
+	msgCh := make(chan *message.HandshakeMessage, 1)
 	defer close(msgCh)
 	errCh := make(chan error, 2) // Read, Write error
 	defer close(errCh)
@@ -82,7 +83,7 @@ func (p *TCPPeer) Handshake(our *HandshakeMessage) (*HandshakeMessage, error) {
 		return nil, err
 	case remoteMsg := <-msgCh:
 		p.publickey = *remoteMsg.PublicKey
-		p.address = p.publickey.Address()
+		p.address = remoteMsg.PublicKey.Address()
 		p.netAddr = remoteMsg.NetAddr
 
 		return remoteMsg, nil
@@ -92,7 +93,7 @@ func (p *TCPPeer) Handshake(our *HandshakeMessage) (*HandshakeMessage, error) {
 	}
 }
 
-func (p *TCPPeer) readHandshakeMessage(msgCh chan<- *HandshakeMessage, errCh chan<- error) {
+func (p *TCPPeer) readHandshakeMessage(msgCh chan<- *message.HandshakeMessage, errCh chan<- error) {
 	msgLenBuf := make([]byte, 4)
 
 	if _, err := io.ReadFull(p.conn, msgLenBuf); IsUnrecoverableTCPError(err) {
@@ -114,7 +115,7 @@ func (p *TCPPeer) readHandshakeMessage(msgCh chan<- *HandshakeMessage, errCh cha
 		return
 	}
 
-	h := new(HandshakeMessage)
+	h := new(message.HandshakeMessage)
 
 	if err := codec.DecodeProto(msgBuf, h); err != nil {
 		errCh <- err
@@ -129,7 +130,7 @@ func (p *TCPPeer) readHandshakeMessage(msgCh chan<- *HandshakeMessage, errCh cha
 	msgCh <- h
 }
 
-func (p *TCPPeer) writeHandshakeMessage(our *HandshakeMessage, errCh chan<- error) {
+func (p *TCPPeer) writeHandshakeMessage(our *message.HandshakeMessage, errCh chan<- error) {
 	payload, err := codec.EncodeProto(our)
 
 	if err != nil {
@@ -187,7 +188,7 @@ func (p *TCPPeer) Read() {
 			return
 
 		case msgBuf := <-rCh:
-			p.msgCh <- RawMessage{
+			p.msgCh <- message.RawMessage{
 				From:    p.Address(),
 				Payload: bytes.NewBuffer(msgBuf),
 			}
