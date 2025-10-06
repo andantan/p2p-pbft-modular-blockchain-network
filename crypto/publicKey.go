@@ -2,6 +2,7 @@ package crypto
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"github.com/andantan/p2p-pbft-modular-blockchain-network/types"
 )
@@ -43,4 +44,12 @@ func (k *PublicKey) Address() types.Address {
 	a, _ := types.AddressFromBytes(h[s:])
 
 	return a
+}
+
+func (k *PublicKey) String() string {
+	if k == nil || len(k.Key) == 0 {
+		return "PublicKey<nil>"
+	}
+
+	return fmt.Sprintf("PublicKey{%s...}", hex.EncodeToString(k.Key)[:16])
 }

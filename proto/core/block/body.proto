@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package block;
+option go_package = "github.com/andantan/p2p-pbft-modular-blockchain-network/proto/core/block";
+
+import "proto/core/block/transaction.proto";
+
+message Body {
+  repeated Transaction transactions = 1;
+}

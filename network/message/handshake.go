@@ -3,9 +3,10 @@ package message
 import (
 	"bytes"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"github.com/andantan/p2p-pbft-modular-blockchain-network/crypto"
-	pb "github.com/andantan/p2p-pbft-modular-blockchain-network/proto/handshake"
+	pb "github.com/andantan/p2p-pbft-modular-blockchain-network/proto/network/message"
 	"github.com/andantan/p2p-pbft-modular-blockchain-network/types"
 	"google.golang.org/protobuf/proto"
 )
@@ -85,19 +86,24 @@ func (h *HandshakeMessage) ToProto() (proto.Message, error) {
 func (h *HandshakeMessage) FromProto(msg proto.Message) error {
 	p, ok := msg.(*pb.Handshake)
 	if !ok {
-		return fmt.Errorf("invalid proto message type for PeerIdentity")
+		return errors.New("invalid proto message type for PeerIdentity")
 	}
 
-	pubKey, err := crypto.PublicKeyFromBytes(p.PublicKey)
-	if err != nil {
-		return err
-	}
-	sig, err := crypto.SignatureFromBytes(p.Signature)
-	if err != nil {
+	var (
+		err error
+		key *crypto.PublicKey
+		sig *crypto.Signature
+	)
+
+	if key, err = crypto.PublicKeyFromBytes(p.PublicKey); err != nil {
 		return err
 	}
 
-	h.PublicKey = pubKey
+	if sig, err = crypto.SignatureFromBytes(p.Signature); err != nil {
+		return err
+	}
+
+	h.PublicKey = key
 	h.NetAddr = p.NetAddr
 	h.Signature = sig
 

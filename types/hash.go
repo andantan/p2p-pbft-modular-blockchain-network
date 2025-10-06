@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"strings"
@@ -8,6 +9,11 @@ import (
 
 const (
 	HashLength = 32
+)
+
+var (
+	ZeroHash = FilledHash(0x00)
+	FFHash   = FilledHash(0xFF)
 )
 
 type Hash [HashLength]uint8
@@ -32,6 +38,26 @@ func (h Hash) ShortString(l int) string {
 	}
 
 	return "0x" + hs[:l]
+}
+
+func (h Hash) Eq(o Hash) bool {
+	return h == o
+}
+
+func (h Hash) Gt(other Hash) bool {
+	return bytes.Compare(h[:], other[:]) > 0
+}
+
+func (h Hash) Gte(other Hash) bool {
+	return bytes.Compare(h[:], other[:]) >= 0
+}
+
+func (h Hash) Lt(other Hash) bool {
+	return bytes.Compare(h[:], other[:]) < 0
+}
+
+func (h Hash) Lte(other Hash) bool {
+	return bytes.Compare(h[:], other[:]) <= 0
 }
 
 func HashFromBytes(b []byte) (Hash, error) {
@@ -59,4 +85,14 @@ func HashFromHexString(s string) (Hash, error) {
 	}
 
 	return HashFromBytes(b)
+}
+
+func FilledHash(b byte) Hash {
+	h := Hash{}
+
+	for i := range HashLength {
+		h[i] = b
+	}
+
+	return h
 }

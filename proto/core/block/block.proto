@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package block;
+option go_package = "github.com/andantan/p2p-pbft-modular-blockchain-network/proto/core/block";
+
+import "proto/core/block/header.proto";
+import "proto/core/block/body.proto";
+
+message Block {
+  bytes block_hash = 1;
+
+  Header header = 2;
+  Body body = 3;
+
+  bytes proposer = 4;
+  bytes signature = 5;
+}

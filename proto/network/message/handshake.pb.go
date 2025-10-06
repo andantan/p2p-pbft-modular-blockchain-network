@@ -2,9 +2,9 @@
 // versions:
 // 	protoc-gen-go v1.36.6
 // 	protoc        v6.30.2
-// source: proto/handshake/peer_handshake.proto
+// source: proto/network/message/handshake.proto
 
-package handshake
+package message
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -32,7 +32,7 @@ type Handshake struct {
 
 func (x *Handshake) Reset() {
 	*x = Handshake{}
-	mi := &file_proto_handshake_peer_handshake_proto_msgTypes[0]
+	mi := &file_proto_network_message_handshake_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -44,7 +44,7 @@ func (x *Handshake) String() string {
 func (*Handshake) ProtoMessage() {}
 
 func (x *Handshake) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_handshake_peer_handshake_proto_msgTypes[0]
+	mi := &file_proto_network_message_handshake_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -57,7 +57,7 @@ func (x *Handshake) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Handshake.ProtoReflect.Descriptor instead.
 func (*Handshake) Descriptor() ([]byte, []int) {
-	return file_proto_handshake_peer_handshake_proto_rawDescGZIP(), []int{0}
+	return file_proto_network_message_handshake_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *Handshake) GetPublicKey() []byte {
@@ -81,34 +81,34 @@ func (x *Handshake) GetSignature() []byte {
 	return nil
 }
 
-var File_proto_handshake_peer_handshake_proto protoreflect.FileDescriptor
+var File_proto_network_message_handshake_proto protoreflect.FileDescriptor
 
-const file_proto_handshake_peer_handshake_proto_rawDesc = "" +
+const file_proto_network_message_handshake_proto_rawDesc = "" +
 	"\n" +
-	"$proto/handshake/peer_handshake.proto\x12\thandshake\"c\n" +
+	"%proto/network/message/handshake.proto\x12\amessage\"c\n" +
 	"\tHandshake\x12\x1d\n" +
 	"\n" +
 	"public_key\x18\x01 \x01(\fR\tpublicKey\x12\x19\n" +
 	"\bnet_addr\x18\x02 \x01(\tR\anetAddr\x12\x1c\n" +
-	"\tsignature\x18\x03 \x01(\fR\tsignatureBIZGgithub.com/andantan/p2p-pbft-modular-blockchain-network/proto/handshakeb\x06proto3"
+	"\tsignature\x18\x03 \x01(\fR\tsignatureBOZMgithub.com/andantan/p2p-pbft-modular-blockchain-network/proto/network/messageb\x06proto3"
 
 var (
-	file_proto_handshake_peer_handshake_proto_rawDescOnce sync.Once
-	file_proto_handshake_peer_handshake_proto_rawDescData []byte
+	file_proto_network_message_handshake_proto_rawDescOnce sync.Once
+	file_proto_network_message_handshake_proto_rawDescData []byte
 )
 
-func file_proto_handshake_peer_handshake_proto_rawDescGZIP() []byte {
-	file_proto_handshake_peer_handshake_proto_rawDescOnce.Do(func() {
-		file_proto_handshake_peer_handshake_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_proto_handshake_peer_handshake_proto_rawDesc), len(file_proto_handshake_peer_handshake_proto_rawDesc)))
+func file_proto_network_message_handshake_proto_rawDescGZIP() []byte {
+	file_proto_network_message_handshake_proto_rawDescOnce.Do(func() {
+		file_proto_network_message_handshake_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_proto_network_message_handshake_proto_rawDesc), len(file_proto_network_message_handshake_proto_rawDesc)))
 	})
-	return file_proto_handshake_peer_handshake_proto_rawDescData
+	return file_proto_network_message_handshake_proto_rawDescData
 }
 
-var file_proto_handshake_peer_handshake_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-var file_proto_handshake_peer_handshake_proto_goTypes = []any{
-	(*Handshake)(nil), // 0: handshake.Handshake
+var file_proto_network_message_handshake_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_proto_network_message_handshake_proto_goTypes = []any{
+	(*Handshake)(nil), // 0: message.Handshake
 }
-var file_proto_handshake_peer_handshake_proto_depIdxs = []int32{
+var file_proto_network_message_handshake_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
 	0, // [0:0] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
@@ -116,26 +116,26 @@ var file_proto_handshake_peer_handshake_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for field type_name
 }
 
-func init() { file_proto_handshake_peer_handshake_proto_init() }
-func file_proto_handshake_peer_handshake_proto_init() {
-	if File_proto_handshake_peer_handshake_proto != nil {
+func init() { file_proto_network_message_handshake_proto_init() }
+func file_proto_network_message_handshake_proto_init() {
+	if File_proto_network_message_handshake_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_handshake_peer_handshake_proto_rawDesc), len(file_proto_handshake_peer_handshake_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_network_message_handshake_proto_rawDesc), len(file_proto_network_message_handshake_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_proto_handshake_peer_handshake_proto_goTypes,
-		DependencyIndexes: file_proto_handshake_peer_handshake_proto_depIdxs,
-		MessageInfos:      file_proto_handshake_peer_handshake_proto_msgTypes,
+		GoTypes:           file_proto_network_message_handshake_proto_goTypes,
+		DependencyIndexes: file_proto_network_message_handshake_proto_depIdxs,
+		MessageInfos:      file_proto_network_message_handshake_proto_msgTypes,
 	}.Build()
-	File_proto_handshake_peer_handshake_proto = out.File
-	file_proto_handshake_peer_handshake_proto_goTypes = nil
-	file_proto_handshake_peer_handshake_proto_depIdxs = nil
+	File_proto_network_message_handshake_proto = out.File
+	file_proto_network_message_handshake_proto_goTypes = nil
+	file_proto_network_message_handshake_proto_depIdxs = nil
 }

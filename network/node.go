@@ -56,7 +56,7 @@ func NewTCPNode(
 		peerSet:    types.NewAtomicSet[types.Address](),
 	}
 
-	t.logger = util.LoggerWithPrefixes("node", "address", t.address.ShortString(8), "listen-addr", t.listenAddr)
+	t.logger = util.LoggerWithPrefixes("Node", "address", t.address.ShortString(8), "listen-addr", t.listenAddr)
 
 	return t
 }
@@ -109,7 +109,7 @@ func (n *TCPNode) acceptLoop() {
 				return
 			}
 
-			_ = n.logger.Log("msg", "new connection invoked. starting handshake", "net-addr", conn.RemoteAddr())
+			_ = n.logger.Log("msg", "new connection invoked. starting message", "net-addr", conn.RemoteAddr())
 			go n.handshakeAndValidate(conn)
 
 		case err := <-errCh:
@@ -149,7 +149,7 @@ func (n *TCPNode) handshakeAndValidate(conn net.Conn) {
 	peer := NewTCPPeer(conn, n.messageCh, n.delPeerCh)
 
 	if remoteId, err = peer.Handshake(ourId); err != nil {
-		_ = n.logger.Log("msg", "failed to handshake peer", "err", err)
+		_ = n.logger.Log("msg", "failed to message peer", "err", err)
 		return
 	}
 
@@ -162,6 +162,7 @@ func (n *TCPNode) handshakeAndValidate(conn net.Conn) {
 		if isInbound && isLargerId {
 			_ = n.logger.Log("msg", "tie-breaking: dropping inbound from lower ID peer")
 			_ = conn.Close()
+			n.Remove(peer)
 		}
 
 		return

@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package benchmark;
+option go_package = "github.com/andantan/p2p-pbft-modular-blockchain-network/proto/benchmark";
+
+import "proto/core/block/transaction.proto";
+
+message Transactions {
+  repeated block.Transaction txx = 1;
+}
