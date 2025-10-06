@@ -1,40 +1,23 @@
 package block
 
 import (
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/codec"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/util"
 	"github.com/stretchr/testify/assert"
 	"testing"
-	"time"
 )
 
 func TestHeader_EncodeDecode(t *testing.T) {
-	h := &Header{
-		Version:       1,
-		MerkleRoot:    util.RandomHash(),
-		PrevBlockHash: util.RandomHash(),
-		Timestamp:     time.Now().UnixNano(),
-		Height:        10,
-	}
+	h := GenerateRandomTestHeader(t)
 
 	// Marshalling
-	b, err := codec.EncodeProto(h)
-	assert.NoError(t, err)
-
+	eh := MarshallTestHeader(t, h)
 	// Unmarshalling
-	hDecode := new(Header)
-	err = codec.DecodeProto(b, hDecode)
-	assert.NoError(t, err)
+	dh := UnmarshallTestHeader(t, eh)
 
-	assert.Equal(t, h, hDecode)
+	assert.Equal(t, *h, *dh)
 }
 
 func TestHeader_Hash(t *testing.T) {
-	h1 := &Header{
-		Version:       1,
-		PrevBlockHash: util.RandomHash(),
-		Height:        1,
-	}
+	h1 := GenerateRandomTestHeader(t)
 	h2 := *h1
 
 	hash1, err := h1.Hash()

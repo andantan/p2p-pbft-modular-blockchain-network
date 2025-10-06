@@ -1,21 +1,13 @@
 package block
 
 import (
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/codec"
 	"github.com/andantan/p2p-pbft-modular-blockchain-network/crypto"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/util"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestTransaction_SignAndVerify(t *testing.T) {
-	privKey, _ := crypto.GeneratePrivateKey()
-	tx := NewTransaction(util.RandomBytes(100), 0)
-
-	assert.NoError(t, tx.Sign(privKey))
-	assert.NotNil(t, tx.Signature)
-
-	assert.NoError(t, tx.Verify())
+	tx := GenerateRandomTestTransaction(t)
 
 	otherPrivKey, _ := crypto.GeneratePrivateKey()
 	tx.From = otherPrivKey.PublicKey()
@@ -23,35 +15,28 @@ func TestTransaction_SignAndVerify(t *testing.T) {
 }
 
 func TestTransaction_EncodeDecode(t *testing.T) {
-	tx := NewTransaction(util.RandomBytes(200), 1)
-	privKey, _ := crypto.GeneratePrivateKey()
-	assert.NoError(t, tx.Sign(privKey))
+	tx := GenerateRandomTestTransaction(t)
 
 	// Marshalling
-	b, err := codec.EncodeProto(tx)
-	assert.NoError(t, err)
-
+	et := MarshallTestTransaction(t, tx)
 	// Unmarshalling
-	txDecode := new(Transaction)
-	assert.NoError(t, codec.DecodeProto(b, txDecode))
+	dt := UnMarshallTestTransaction(t, et)
 
 	hashOrig, _ := tx.Hash()
-	hashDecode, _ := txDecode.Hash()
+	hashDecode, _ := dt.Hash()
 	assert.True(t, hashOrig.Eq(hashDecode))
-	assert.Equal(t, tx.Data, txDecode.Data)
+	assert.Equal(t, tx.Data, dt.Data)
 }
 
 func TestTransaction_DataHash(t *testing.T) {
-	tx := NewTransaction(util.RandomBytes(50), 0)
+	tx := GenerateRandomTestTransaction(t)
 
 	hash := tx.dataHash()
 	assert.False(t, hash.IsZero())
 }
 
 func TestTransaction_Hash(t *testing.T) {
-	tx := NewTransaction(util.RandomBytes(50), 0)
-	privKey, _ := crypto.GeneratePrivateKey()
-	assert.NoError(t, tx.Sign(privKey))
+	tx := GenerateRandomTestTransaction(t)
 
 	hash1, err := tx.Hash()
 	assert.NoError(t, err)

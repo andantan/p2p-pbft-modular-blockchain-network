@@ -11,6 +11,11 @@ const (
 	HashLength = 32
 )
 
+var (
+	ZeroHash = FilledHash(0x00)
+	FFHash   = FilledHash(0xFF)
+)
+
 type Hash [HashLength]uint8
 
 func (h Hash) Bytes() []byte {

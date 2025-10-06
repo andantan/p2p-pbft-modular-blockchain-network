@@ -71,10 +71,10 @@ func (p *TCPPeer) Handshake(our *message.HandshakeMessage) (*message.HandshakeMe
 	errCh := make(chan error, 2) // Read, Write error
 	defer close(errCh)
 
-	// read handshake message
+	// read message
 	go p.readHandshakeMessage(msgCh, errCh)
 
-	// write handshake message
+	// write message
 	go p.writeHandshakeMessage(our, errCh)
 
 	select {
@@ -89,7 +89,7 @@ func (p *TCPPeer) Handshake(our *message.HandshakeMessage) (*message.HandshakeMe
 		return remoteMsg, nil
 	case <-time.After(5 * time.Second):
 		_ = p.conn.Close()
-		return nil, fmt.Errorf("handshake-timeout")
+		return nil, fmt.Errorf("message-timeout")
 	}
 }
 
@@ -105,7 +105,7 @@ func (p *TCPPeer) readHandshakeMessage(msgCh chan<- *message.HandshakeMessage, e
 
 	// sanity check threshold = 4KB
 	if msgLen > 1<<12 {
-		errCh <- fmt.Errorf("handshake payload too large: %d bytes", msgLen)
+		errCh <- fmt.Errorf("message payload too large: %d bytes", msgLen)
 		return
 	}
 

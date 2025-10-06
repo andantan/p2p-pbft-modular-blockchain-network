@@ -2,9 +2,9 @@
 // versions:
 // 	protoc-gen-go v1.36.6
 // 	protoc        v6.30.2
-// source: proto/block/header/header.proto
+// source: proto/core/block/header.proto
 
-package header
+package block
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -37,7 +37,7 @@ type Header struct {
 
 func (x *Header) Reset() {
 	*x = Header{}
-	mi := &file_proto_block_header_header_proto_msgTypes[0]
+	mi := &file_proto_core_block_header_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -49,7 +49,7 @@ func (x *Header) String() string {
 func (*Header) ProtoMessage() {}
 
 func (x *Header) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_block_header_header_proto_msgTypes[0]
+	mi := &file_proto_core_block_header_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -62,7 +62,7 @@ func (x *Header) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Header.ProtoReflect.Descriptor instead.
 func (*Header) Descriptor() ([]byte, []int) {
-	return file_proto_block_header_header_proto_rawDescGZIP(), []int{0}
+	return file_proto_core_block_header_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *Header) GetVersion() uint32 {
@@ -121,11 +121,11 @@ func (x *Header) GetNonce() uint64 {
 	return 0
 }
 
-var File_proto_block_header_header_proto protoreflect.FileDescriptor
+var File_proto_core_block_header_proto protoreflect.FileDescriptor
 
-const file_proto_block_header_header_proto_rawDesc = "" +
+const file_proto_core_block_header_proto_rawDesc = "" +
 	"\n" +
-	"\x1fproto/block/header/header.proto\x12\x04core\"\xee\x01\n" +
+	"\x1dproto/core/block/header.proto\x12\x05block\"\xee\x01\n" +
 	"\x06Header\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\rR\aversion\x12\x1f\n" +
 	"\vmerkle_root\x18\x02 \x01(\fR\n" +
@@ -136,25 +136,25 @@ const file_proto_block_header_header_proto_rawDesc = "" +
 	"\x06weight\x18\x06 \x01(\x04R\x06weight\x12\x1d\n" +
 	"\n" +
 	"state_root\x18\a \x01(\fR\tstateRoot\x12\x14\n" +
-	"\x05nonce\x18\b \x01(\x04R\x05nonceBLZJgithub.com/andantan/p2p-pbft-modular-blockchain-network/proto/block/headerb\x06proto3"
+	"\x05nonce\x18\b \x01(\x04R\x05nonceBJZHgithub.com/andantan/p2p-pbft-modular-blockchain-network/proto/core/blockb\x06proto3"
 
 var (
-	file_proto_block_header_header_proto_rawDescOnce sync.Once
-	file_proto_block_header_header_proto_rawDescData []byte
+	file_proto_core_block_header_proto_rawDescOnce sync.Once
+	file_proto_core_block_header_proto_rawDescData []byte
 )
 
-func file_proto_block_header_header_proto_rawDescGZIP() []byte {
-	file_proto_block_header_header_proto_rawDescOnce.Do(func() {
-		file_proto_block_header_header_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_proto_block_header_header_proto_rawDesc), len(file_proto_block_header_header_proto_rawDesc)))
+func file_proto_core_block_header_proto_rawDescGZIP() []byte {
+	file_proto_core_block_header_proto_rawDescOnce.Do(func() {
+		file_proto_core_block_header_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_proto_core_block_header_proto_rawDesc), len(file_proto_core_block_header_proto_rawDesc)))
 	})
-	return file_proto_block_header_header_proto_rawDescData
+	return file_proto_core_block_header_proto_rawDescData
 }
 
-var file_proto_block_header_header_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-var file_proto_block_header_header_proto_goTypes = []any{
-	(*Header)(nil), // 0: core.Header
+var file_proto_core_block_header_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_proto_core_block_header_proto_goTypes = []any{
+	(*Header)(nil), // 0: block.Header
 }
-var file_proto_block_header_header_proto_depIdxs = []int32{
+var file_proto_core_block_header_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
 	0, // [0:0] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
@@ -162,26 +162,26 @@ var file_proto_block_header_header_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for field type_name
 }
 
-func init() { file_proto_block_header_header_proto_init() }
-func file_proto_block_header_header_proto_init() {
-	if File_proto_block_header_header_proto != nil {
+func init() { file_proto_core_block_header_proto_init() }
+func file_proto_core_block_header_proto_init() {
+	if File_proto_core_block_header_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_block_header_header_proto_rawDesc), len(file_proto_block_header_header_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_core_block_header_proto_rawDesc), len(file_proto_core_block_header_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_proto_block_header_header_proto_goTypes,
-		DependencyIndexes: file_proto_block_header_header_proto_depIdxs,
-		MessageInfos:      file_proto_block_header_header_proto_msgTypes,
+		GoTypes:           file_proto_core_block_header_proto_goTypes,
+		DependencyIndexes: file_proto_core_block_header_proto_depIdxs,
+		MessageInfos:      file_proto_core_block_header_proto_msgTypes,
 	}.Build()
-	File_proto_block_header_header_proto = out.File
-	file_proto_block_header_header_proto_goTypes = nil
-	file_proto_block_header_header_proto_depIdxs = nil
+	File_proto_core_block_header_proto = out.File
+	file_proto_core_block_header_proto_goTypes = nil
+	file_proto_core_block_header_proto_depIdxs = nil
 }

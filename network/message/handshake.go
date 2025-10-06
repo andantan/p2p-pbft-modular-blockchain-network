@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/andantan/p2p-pbft-modular-blockchain-network/crypto"
-	pb "github.com/andantan/p2p-pbft-modular-blockchain-network/proto/handshake"
+	pb "github.com/andantan/p2p-pbft-modular-blockchain-network/proto/network/message"
 	"github.com/andantan/p2p-pbft-modular-blockchain-network/types"
 	"google.golang.org/protobuf/proto"
 )

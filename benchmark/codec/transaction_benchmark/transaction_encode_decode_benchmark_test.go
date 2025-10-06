@@ -1,10 +1,12 @@
-package block
+package transaction_benchmark
 
 import (
 	"bytes"
 	"encoding/gob"
+	"github.com/andantan/p2p-pbft-modular-blockchain-network/core/block"
 	"github.com/andantan/p2p-pbft-modular-blockchain-network/crypto"
-	pb "github.com/andantan/p2p-pbft-modular-blockchain-network/proto/block/transaction"
+	pbBenchmark "github.com/andantan/p2p-pbft-modular-blockchain-network/proto/benchmark/codec/transaction_benchmark"
+	pbBlock "github.com/andantan/p2p-pbft-modular-blockchain-network/proto/core/block"
 	"github.com/andantan/p2p-pbft-modular-blockchain-network/util"
 	"google.golang.org/protobuf/proto"
 	"testing"
@@ -22,10 +24,10 @@ var (
 	protoTxx1000000 = transactionsToProto(txx1000000)
 )
 
-func generateTransactions(n int) []*Transaction {
-	txx := make([]*Transaction, n)
+func generateTransactions(n int) []*block.Transaction {
+	txx := make([]*block.Transaction, n)
 	for i := 0; i < n; i++ {
-		tx := NewTransaction(util.RandomBytes(1<<10), uint64(i))
+		tx := block.NewTransaction(util.RandomBytes(1<<10), uint64(i))
 		privKey, _ := crypto.GeneratePrivateKey()
 		_ = tx.Sign(privKey)
 		txx[i] = tx
@@ -35,14 +37,14 @@ func generateTransactions(n int) []*Transaction {
 
 // ===== Gob benchmark =====
 
-func benchmarkGobEncode(txx []*Transaction, b *testing.B) {
+func benchmarkGobEncode(txx []*block.Transaction, b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		buf := new(bytes.Buffer)
 		_ = gob.NewEncoder(buf).Encode(txx)
 	}
 }
 
-func benchmarkGobDecode(txx []*Transaction, b *testing.B) {
+func benchmarkGobDecode(txx []*block.Transaction, b *testing.B) {
 	buf := new(bytes.Buffer)
 	_ = gob.NewEncoder(buf).Encode(txx)
 	data := buf.Bytes()
@@ -50,7 +52,7 @@ func benchmarkGobDecode(txx []*Transaction, b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		var decodedTxx []*Transaction
+		var decodedTxx []*block.Transaction
 		_ = gob.NewDecoder(bytes.NewReader(data)).Decode(&decodedTxx)
 	}
 }
@@ -82,28 +84,28 @@ func BenchmarkGobDecode_1000000(b *testing.B) {
 
 // ===== Protobuf benchmark =====
 
-func transactionsToProto(txx []*Transaction) *pb.Transactions {
-	protoTxx := make([]*pb.Transaction, len(txx))
+func transactionsToProto(txx []*block.Transaction) *pbBenchmark.Transactions {
+	protoTxx := make([]*pbBlock.Transaction, len(txx))
 	for i, tx := range txx {
 		protoTx, _ := tx.ToProto()
-		protoTxx[i] = protoTx.(*pb.Transaction)
+		protoTxx[i] = protoTx.(*pbBlock.Transaction)
 	}
-	return &pb.Transactions{Txx: protoTxx}
+	return &pbBenchmark.Transactions{Txx: protoTxx}
 }
 
-func benchmarkProtoEncode(protoTxx *pb.Transactions, b *testing.B) {
+func benchmarkProtoEncode(protoTxx *pbBenchmark.Transactions, b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_, _ = proto.Marshal(protoTxx)
 	}
 }
 
-func benchmarkProtoDecode(protoTxx *pb.Transactions, b *testing.B) {
+func benchmarkProtoDecode(protoTxx *pbBenchmark.Transactions, b *testing.B) {
 	data, _ := proto.Marshal(protoTxx)
 	b.ReportAllocs()
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		var decodedProtoTxx pb.Transactions
+		var decodedProtoTxx pbBenchmark.Transactions
 		_ = proto.Unmarshal(data, &decodedProtoTxx)
 	}
 }

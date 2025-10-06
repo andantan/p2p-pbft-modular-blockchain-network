@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package message;
+option go_package = "github.com/andantan/p2p-pbft-modular-blockchain-network/proto/network/message";
+
+message Handshake {
+  bytes public_key = 1;
+  string net_addr = 2;
+  bytes signature = 3;
+}

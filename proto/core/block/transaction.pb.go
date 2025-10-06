@@ -2,9 +2,9 @@
 // versions:
 // 	protoc-gen-go v1.36.6
 // 	protoc        v6.30.2
-// source: proto/block/transaction/transaction.proto
+// source: proto/core/block/transaction.proto
 
-package transaction
+package block
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -33,7 +33,7 @@ type Transaction struct {
 
 func (x *Transaction) Reset() {
 	*x = Transaction{}
-	mi := &file_proto_block_transaction_transaction_proto_msgTypes[0]
+	mi := &file_proto_core_block_transaction_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -45,7 +45,7 @@ func (x *Transaction) String() string {
 func (*Transaction) ProtoMessage() {}
 
 func (x *Transaction) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_block_transaction_transaction_proto_msgTypes[0]
+	mi := &file_proto_core_block_transaction_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -58,7 +58,7 @@ func (x *Transaction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Transaction.ProtoReflect.Descriptor instead.
 func (*Transaction) Descriptor() ([]byte, []int) {
-	return file_proto_block_transaction_transaction_proto_rawDescGZIP(), []int{0}
+	return file_proto_core_block_transaction_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *Transaction) GetData() []byte {
@@ -89,34 +89,34 @@ func (x *Transaction) GetNonce() uint64 {
 	return 0
 }
 
-var File_proto_block_transaction_transaction_proto protoreflect.FileDescriptor
+var File_proto_core_block_transaction_proto protoreflect.FileDescriptor
 
-const file_proto_block_transaction_transaction_proto_rawDesc = "" +
+const file_proto_core_block_transaction_proto_rawDesc = "" +
 	"\n" +
-	")proto/block/transaction/transaction.proto\x12\x04core\"i\n" +
+	"\"proto/core/block/transaction.proto\x12\x05block\"i\n" +
 	"\vTransaction\x12\x12\n" +
 	"\x04data\x18\x01 \x01(\fR\x04data\x12\x12\n" +
 	"\x04from\x18\x02 \x01(\fR\x04from\x12\x1c\n" +
 	"\tsignature\x18\x03 \x01(\fR\tsignature\x12\x14\n" +
-	"\x05nonce\x18\x04 \x01(\x04R\x05nonceBQZOgithub.com/andantan/p2p-pbft-modular-blockchain-network/proto/block/transactionb\x06proto3"
+	"\x05nonce\x18\x04 \x01(\x04R\x05nonceBJZHgithub.com/andantan/p2p-pbft-modular-blockchain-network/proto/core/blockb\x06proto3"
 
 var (
-	file_proto_block_transaction_transaction_proto_rawDescOnce sync.Once
-	file_proto_block_transaction_transaction_proto_rawDescData []byte
+	file_proto_core_block_transaction_proto_rawDescOnce sync.Once
+	file_proto_core_block_transaction_proto_rawDescData []byte
 )
 
-func file_proto_block_transaction_transaction_proto_rawDescGZIP() []byte {
-	file_proto_block_transaction_transaction_proto_rawDescOnce.Do(func() {
-		file_proto_block_transaction_transaction_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_proto_block_transaction_transaction_proto_rawDesc), len(file_proto_block_transaction_transaction_proto_rawDesc)))
+func file_proto_core_block_transaction_proto_rawDescGZIP() []byte {
+	file_proto_core_block_transaction_proto_rawDescOnce.Do(func() {
+		file_proto_core_block_transaction_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_proto_core_block_transaction_proto_rawDesc), len(file_proto_core_block_transaction_proto_rawDesc)))
 	})
-	return file_proto_block_transaction_transaction_proto_rawDescData
+	return file_proto_core_block_transaction_proto_rawDescData
 }
 
-var file_proto_block_transaction_transaction_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-var file_proto_block_transaction_transaction_proto_goTypes = []any{
-	(*Transaction)(nil), // 0: core.Transaction
+var file_proto_core_block_transaction_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_proto_core_block_transaction_proto_goTypes = []any{
+	(*Transaction)(nil), // 0: block.Transaction
 }
-var file_proto_block_transaction_transaction_proto_depIdxs = []int32{
+var file_proto_core_block_transaction_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
 	0, // [0:0] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
@@ -124,26 +124,26 @@ var file_proto_block_transaction_transaction_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for field type_name
 }
 
-func init() { file_proto_block_transaction_transaction_proto_init() }
-func file_proto_block_transaction_transaction_proto_init() {
-	if File_proto_block_transaction_transaction_proto != nil {
+func init() { file_proto_core_block_transaction_proto_init() }
+func file_proto_core_block_transaction_proto_init() {
+	if File_proto_core_block_transaction_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_block_transaction_transaction_proto_rawDesc), len(file_proto_block_transaction_transaction_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_core_block_transaction_proto_rawDesc), len(file_proto_core_block_transaction_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_proto_block_transaction_transaction_proto_goTypes,
-		DependencyIndexes: file_proto_block_transaction_transaction_proto_depIdxs,
-		MessageInfos:      file_proto_block_transaction_transaction_proto_msgTypes,
+		GoTypes:           file_proto_core_block_transaction_proto_goTypes,
+		DependencyIndexes: file_proto_core_block_transaction_proto_depIdxs,
+		MessageInfos:      file_proto_core_block_transaction_proto_msgTypes,
 	}.Build()
-	File_proto_block_transaction_transaction_proto = out.File
-	file_proto_block_transaction_transaction_proto_goTypes = nil
-	file_proto_block_transaction_transaction_proto_depIdxs = nil
+	File_proto_core_block_transaction_proto = out.File
+	file_proto_core_block_transaction_proto_goTypes = nil
+	file_proto_core_block_transaction_proto_depIdxs = nil
 }

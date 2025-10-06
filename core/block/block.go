@@ -1,1 +1,173 @@
 package block
+
+import (
+	"errors"
+	"fmt"
+	"github.com/andantan/p2p-pbft-modular-blockchain-network/crypto"
+	pb "github.com/andantan/p2p-pbft-modular-blockchain-network/proto/core/block"
+	"github.com/andantan/p2p-pbft-modular-blockchain-network/types"
+	"github.com/andantan/p2p-pbft-modular-blockchain-network/util"
+	"google.golang.org/protobuf/proto"
+)
+
+type Block struct {
+	blockHash types.Hash
+
+	Header *Header
+	Body   *Body
+
+	Proposer  *crypto.PublicKey
+	Signature *crypto.Signature
+}
+
+func NewBlock(header *Header, body *Body) (*Block, error) {
+	b := &Block{
+		Header: header,
+		Body:   body,
+	}
+
+	h, err := b.Hash()
+
+	if err != nil {
+		return nil, err
+	}
+
+	b.blockHash = h
+
+	return b, nil
+}
+
+func NewBlockFromPrevHeader(prevHeader *Header, newBody *Body) (*Block, error) {
+	m, err := newBody.CalculateMerkleRoot()
+
+	if err != nil {
+		return nil, err
+	}
+
+	ph, err := prevHeader.Hash()
+
+	if err != nil {
+		return nil, err
+	}
+
+	ht := prevHeader.Height + 1
+	wt := newBody.Weight()
+	s := types.ZeroHash
+	n := util.RandomUint64()
+
+	h := NewHeader(m, ph, ht, wt, s, n)
+
+	return NewBlock(h, newBody)
+}
+
+func (b *Block) Hash() (types.Hash, error) {
+	if !b.blockHash.IsZero() {
+		return b.blockHash, nil
+	}
+
+	h, err := b.Header.Hash()
+
+	if err != nil {
+		return types.Hash{}, err
+	}
+	b.blockHash = h
+
+	return h, nil
+}
+
+func (b *Block) Sign(privKey *crypto.PrivateKey) error {
+	if b.blockHash.IsZero() {
+		return errors.New("block hash is zero")
+	}
+
+	sig, err := privKey.Sign(b.blockHash.Bytes())
+
+	if err != nil {
+		return err
+	}
+
+	b.Proposer = privKey.PublicKey()
+	b.Signature = sig
+
+	return nil
+}
+
+func (b *Block) Verify() error {
+	if b.Signature == nil || b.Proposer == nil {
+		return fmt.Errorf("block has no signature or sender")
+	}
+
+	if b.Signature.IsNil() {
+		return fmt.Errorf("block has no signature R or S")
+	}
+
+	if !b.Signature.Verify(b.Proposer, b.blockHash.Bytes()) {
+		return fmt.Errorf("block signature is invalid")
+	}
+
+	return nil
+}
+
+func (b *Block) ToProto() (proto.Message, error) {
+	var (
+		err         error
+		headerProto proto.Message
+		bodyProto   proto.Message
+	)
+
+	if headerProto, err = b.Header.ToProto(); err != nil {
+		return nil, err
+	}
+
+	if bodyProto, err = b.Body.ToProto(); err != nil {
+		return nil, err
+	}
+
+	return &pb.Block{
+		BlockHash: b.blockHash.Bytes(),
+		Header:    headerProto.(*pb.Header),
+		Body:      bodyProto.(*pb.Body),
+		Proposer:  b.Proposer.Bytes(),
+		Signature: b.Signature.Bytes(),
+	}, nil
+}
+
+func (b *Block) FromProto(msg proto.Message) error {
+	p, ok := msg.(*pb.Block)
+	if !ok {
+		return fmt.Errorf("invalid proto message type for Block")
+	}
+
+	b.Header = &Header{}
+	if err := b.Header.FromProto(p.Header); err != nil {
+		return err
+	}
+
+	b.Body = &Body{}
+	if err := b.Body.FromProto(p.Body); err != nil {
+		return err
+	}
+
+	var (
+		err       error
+		proposer  *crypto.PublicKey
+		signature *crypto.Signature
+	)
+
+	if proposer, err = crypto.PublicKeyFromBytes(p.Proposer); err != nil {
+		return err
+	}
+
+	if signature, err = crypto.SignatureFromBytes(p.Signature); err != nil {
+		return err
+	}
+
+	b.Proposer = proposer
+	b.Signature = signature
+
+	return nil
+}
+
+func (b *Block) EmptyProto() proto.Message {
+	return &pb.Block{}
+}

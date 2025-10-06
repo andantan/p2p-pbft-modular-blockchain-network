@@ -7,10 +7,9 @@ import (
 	"fmt"
 	"github.com/andantan/p2p-pbft-modular-blockchain-network/codec"
 	"github.com/andantan/p2p-pbft-modular-blockchain-network/crypto"
-	pb "github.com/andantan/p2p-pbft-modular-blockchain-network/proto/block/transaction"
+	pb "github.com/andantan/p2p-pbft-modular-blockchain-network/proto/core/block"
 	"github.com/andantan/p2p-pbft-modular-blockchain-network/types"
 	"google.golang.org/protobuf/proto"
-	"sync"
 	"time"
 )
 
@@ -20,7 +19,6 @@ type Transaction struct {
 	Signature *crypto.Signature
 	Nonce     uint64
 
-	hashLock  sync.RWMutex
 	hash      types.Hash
 	firstSeen int64
 }
@@ -33,12 +31,9 @@ func NewTransaction(data []byte, nonce uint64) *Transaction {
 }
 
 func (tx *Transaction) Hash() (types.Hash, error) {
-	tx.hashLock.RLock()
 	if !tx.hash.IsZero() {
-		defer tx.hashLock.RUnlock()
 		return tx.hash, nil
 	}
-	tx.hashLock.RUnlock()
 
 	if tx.Signature == nil || tx.From == nil {
 		return types.Hash{}, fmt.Errorf("cannot hash an unsigned transaction")
@@ -52,15 +47,8 @@ func (tx *Transaction) Hash() (types.Hash, error) {
 	if err != nil {
 		return types.Hash{}, err
 	}
-	hash := sha256.Sum256(b)
 
-	tx.hashLock.Lock()
-	defer tx.hashLock.Unlock()
-
-	if !tx.hash.IsZero() {
-		return tx.hash, nil
-	}
-	tx.hash = hash
+	tx.hash = sha256.Sum256(b)
 
 	return tx.hash, nil
 }
@@ -153,4 +141,30 @@ func (tx *Transaction) SetFirstSeen() {
 
 func (tx *Transaction) FirstSeen() int64 {
 	return tx.firstSeen
+}
+
+func TransactionsToProto(txx []*Transaction) ([]*pb.Transaction, error) {
+	protoTxx := make([]*pb.Transaction, len(txx))
+	for i, tx := range txx {
+		protoTx, err := tx.ToProto()
+		if err != nil {
+			return nil, err
+		}
+		protoTxx[i] = protoTx.(*pb.Transaction)
+	}
+
+	return protoTxx, nil
+}
+
+func TransactionsFromProto(protoTxx []*pb.Transaction) ([]*Transaction, error) {
+	txx := make([]*Transaction, len(protoTxx))
+	for i, protoTx := range protoTxx {
+		tx := new(Transaction)
+		if err := tx.FromProto(protoTx); err != nil {
+			return nil, err
+		}
+		txx[i] = tx
+	}
+
+	return txx, nil
 }

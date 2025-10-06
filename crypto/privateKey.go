@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"fmt"
 )
 
 type PrivateKey struct {
@@ -41,4 +42,12 @@ func (k *PrivateKey) Sign(data []byte) (*Signature, error) {
 		R: r,
 		S: s,
 	}, nil
+}
+
+func (k *PrivateKey) String() string {
+	if k == nil || k.key == nil {
+		return "PrivateKey<nil>"
+	}
+
+	return fmt.Sprintf("PrivateKey{D: %s...}", k.key.D.Text(16)[:8])
 }

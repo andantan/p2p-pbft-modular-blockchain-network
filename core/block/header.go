@@ -4,9 +4,14 @@ import (
 	"crypto/sha256"
 	"errors"
 	"github.com/andantan/p2p-pbft-modular-blockchain-network/codec"
-	pb "github.com/andantan/p2p-pbft-modular-blockchain-network/proto/block/header"
+	pb "github.com/andantan/p2p-pbft-modular-blockchain-network/proto/core/block"
 	"github.com/andantan/p2p-pbft-modular-blockchain-network/types"
 	"google.golang.org/protobuf/proto"
+	"time"
+)
+
+const (
+	Version uint32 = 1
 )
 
 type Header struct {
@@ -19,6 +24,19 @@ type Header struct {
 
 	StateRoot types.Hash
 	Nonce     uint64
+}
+
+func NewHeader(m types.Hash, ph types.Hash, h uint64, w uint64, s types.Hash, n uint64) *Header {
+	return &Header{
+		Version:       Version,
+		MerkleRoot:    m,
+		PrevBlockHash: ph,
+		Timestamp:     time.Now().UnixNano(),
+		Height:        h,
+		Weight:        w,
+		StateRoot:     s,
+		Nonce:         n,
+	}
 }
 
 func (h *Header) Hash() (types.Hash, error) {

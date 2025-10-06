@@ -109,7 +109,7 @@ func (n *TCPNode) acceptLoop() {
 				return
 			}
 
-			_ = n.logger.Log("msg", "new connection invoked. starting handshake", "net-addr", conn.RemoteAddr())
+			_ = n.logger.Log("msg", "new connection invoked. starting message", "net-addr", conn.RemoteAddr())
 			go n.handshakeAndValidate(conn)
 
 		case err := <-errCh:
@@ -149,7 +149,7 @@ func (n *TCPNode) handshakeAndValidate(conn net.Conn) {
 	peer := NewTCPPeer(conn, n.messageCh, n.delPeerCh)
 
 	if remoteId, err = peer.Handshake(ourId); err != nil {
-		_ = n.logger.Log("msg", "failed to handshake peer", "err", err)
+		_ = n.logger.Log("msg", "failed to message peer", "err", err)
 		return
 	}
 
