@@ -12,18 +12,6 @@ import (
 	"testing"
 )
 
-var (
-	txx5000    = generateTransactions(5000)
-	txx30000   = generateTransactions(30000)
-	txx200000  = generateTransactions(200000)
-	txx1000000 = generateTransactions(1000000)
-
-	protoTxx5000    = transactionsToProto(txx5000)
-	protoTxx30000   = transactionsToProto(txx30000)
-	protoTxx200000  = transactionsToProto(txx200000)
-	protoTxx1000000 = transactionsToProto(txx1000000)
-)
-
 func generateTransactions(n int) []*block.Transaction {
 	txx := make([]*block.Transaction, n)
 	for i := 0; i < n; i++ {
@@ -35,55 +23,6 @@ func generateTransactions(n int) []*block.Transaction {
 	return txx
 }
 
-// ===== Gob benchmark =====
-
-func benchmarkGobEncode(txx []*block.Transaction, b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		buf := new(bytes.Buffer)
-		_ = gob.NewEncoder(buf).Encode(txx)
-	}
-}
-
-func benchmarkGobDecode(txx []*block.Transaction, b *testing.B) {
-	buf := new(bytes.Buffer)
-	_ = gob.NewEncoder(buf).Encode(txx)
-	data := buf.Bytes()
-	b.ReportAllocs()
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		var decodedTxx []*block.Transaction
-		_ = gob.NewDecoder(bytes.NewReader(data)).Decode(&decodedTxx)
-	}
-}
-
-func BenchmarkGobEncode_5000(b *testing.B) {
-	benchmarkGobEncode(txx5000, b)
-}
-func BenchmarkGobDecode_5000(b *testing.B) {
-	benchmarkGobDecode(txx5000, b)
-}
-func BenchmarkGobEncode_30000(b *testing.B) {
-	benchmarkGobEncode(txx30000, b)
-}
-func BenchmarkGobDecode_30000(b *testing.B) {
-	benchmarkGobDecode(txx30000, b)
-}
-func BenchmarkGobEncode_200000(b *testing.B) {
-	benchmarkGobEncode(txx200000, b)
-}
-func BenchmarkGobDecode_200000(b *testing.B) {
-	benchmarkGobDecode(txx200000, b)
-}
-func BenchmarkGobEncode_1000000(b *testing.B) {
-	benchmarkGobEncode(txx1000000, b)
-}
-func BenchmarkGobDecode_1000000(b *testing.B) {
-	benchmarkGobDecode(txx1000000, b)
-}
-
-// ===== Protobuf benchmark =====
-
 func transactionsToProto(txx []*block.Transaction) *pbBenchmark.Transactions {
 	protoTxx := make([]*pbBlock.Transaction, len(txx))
 	for i, tx := range txx {
@@ -93,44 +32,186 @@ func transactionsToProto(txx []*block.Transaction) *pbBenchmark.Transactions {
 	return &pbBenchmark.Transactions{Txx: protoTxx}
 }
 
-func benchmarkProtoEncode(protoTxx *pbBenchmark.Transactions, b *testing.B) {
+// ===== Gob benchmark =====
+
+func BenchmarkGobEncode_5000(b *testing.B) {
+	b.StopTimer()
+	data := generateTransactions(5000)
+	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		_, _ = proto.Marshal(protoTxx)
+		buf := new(bytes.Buffer)
+		_ = gob.NewEncoder(buf).Encode(data)
 	}
 }
 
-func benchmarkProtoDecode(protoTxx *pbBenchmark.Transactions, b *testing.B) {
-	data, _ := proto.Marshal(protoTxx)
+func BenchmarkGobDecode_5000(b *testing.B) {
+	b.StopTimer()
+	data := generateTransactions(5000)
+	buf := new(bytes.Buffer)
+	_ = gob.NewEncoder(buf).Encode(data)
+	encodedData := buf.Bytes()
 	b.ReportAllocs()
 	b.ResetTimer()
-
 	for i := 0; i < b.N; i++ {
-		var decodedProtoTxx pbBenchmark.Transactions
-		_ = proto.Unmarshal(data, &decodedProtoTxx)
+		var decodedTxx []*block.Transaction
+		_ = gob.NewDecoder(bytes.NewReader(encodedData)).Decode(&decodedTxx)
 	}
 }
 
+func BenchmarkGobEncode_30000(b *testing.B) {
+	b.StopTimer()
+	data := generateTransactions(30000)
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		buf := new(bytes.Buffer)
+		_ = gob.NewEncoder(buf).Encode(data)
+	}
+}
+
+func BenchmarkGobDecode_30000(b *testing.B) {
+	b.StopTimer()
+	data := generateTransactions(30000)
+	buf := new(bytes.Buffer)
+	_ = gob.NewEncoder(buf).Encode(data)
+	encodedData := buf.Bytes()
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		var decodedTxx []*block.Transaction
+		_ = gob.NewDecoder(bytes.NewReader(encodedData)).Decode(&decodedTxx)
+	}
+}
+
+func BenchmarkGobEncode_200000(b *testing.B) {
+	b.StopTimer()
+	data := generateTransactions(200000)
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		buf := new(bytes.Buffer)
+		_ = gob.NewEncoder(buf).Encode(data)
+	}
+}
+
+func BenchmarkGobDecode_200000(b *testing.B) {
+	b.StopTimer()
+	data := generateTransactions(200000)
+	buf := new(bytes.Buffer)
+	_ = gob.NewEncoder(buf).Encode(data)
+	encodedData := buf.Bytes()
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		var decodedTxx []*block.Transaction
+		_ = gob.NewDecoder(bytes.NewReader(encodedData)).Decode(&decodedTxx)
+	}
+}
+
+func BenchmarkGobEncode_1000000(b *testing.B) {
+	b.StopTimer()
+	data := generateTransactions(1000000)
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		buf := new(bytes.Buffer)
+		_ = gob.NewEncoder(buf).Encode(data)
+	}
+}
+
+func BenchmarkGobDecode_1000000(b *testing.B) {
+	b.StopTimer()
+	data := generateTransactions(1000000)
+	buf := new(bytes.Buffer)
+	_ = gob.NewEncoder(buf).Encode(data)
+	encodedData := buf.Bytes()
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		var decodedTxx []*block.Transaction
+		_ = gob.NewDecoder(bytes.NewReader(encodedData)).Decode(&decodedTxx)
+	}
+}
+
+// ===== Protobuf benchmark =====
+
 func BenchmarkProtoEncode_5000(b *testing.B) {
-	benchmarkProtoEncode(protoTxx5000, b)
+	b.StopTimer()
+	data := transactionsToProto(generateTransactions(5000))
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = proto.Marshal(data)
+	}
 }
+
 func BenchmarkProtoDecode_5000(b *testing.B) {
-	benchmarkProtoDecode(protoTxx5000, b)
+	b.StopTimer()
+	data := transactionsToProto(generateTransactions(5000))
+	encodedData, _ := proto.Marshal(data)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		var decoded pbBenchmark.Transactions
+		_ = proto.Unmarshal(encodedData, &decoded)
+	}
 }
+
 func BenchmarkProtoEncode_30000(b *testing.B) {
-	benchmarkProtoEncode(protoTxx30000, b)
+	b.StopTimer()
+	data := transactionsToProto(generateTransactions(30000))
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = proto.Marshal(data)
+	}
 }
+
 func BenchmarkProtoDecode_30000(b *testing.B) {
-	benchmarkProtoDecode(protoTxx30000, b)
+	b.StopTimer()
+	data := transactionsToProto(generateTransactions(30000))
+	encodedData, _ := proto.Marshal(data)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		var decoded pbBenchmark.Transactions
+		_ = proto.Unmarshal(encodedData, &decoded)
+	}
 }
+
 func BenchmarkProtoEncode_200000(b *testing.B) {
-	benchmarkProtoEncode(protoTxx200000, b)
+	b.StopTimer()
+	data := transactionsToProto(generateTransactions(200000))
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = proto.Marshal(data)
+	}
 }
+
 func BenchmarkProtoDecode_200000(b *testing.B) {
-	benchmarkProtoDecode(protoTxx200000, b)
+	b.StopTimer()
+	data := transactionsToProto(generateTransactions(200000))
+	encodedData, _ := proto.Marshal(data)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		var decoded pbBenchmark.Transactions
+		_ = proto.Unmarshal(encodedData, &decoded)
+	}
 }
+
 func BenchmarkProtoEncode_1000000(b *testing.B) {
-	benchmarkProtoEncode(protoTxx1000000, b)
+	b.StopTimer()
+	data := transactionsToProto(generateTransactions(1000000))
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = proto.Marshal(data)
+	}
 }
+
 func BenchmarkProtoDecode_1000000(b *testing.B) {
-	benchmarkProtoDecode(protoTxx1000000, b)
+	b.StopTimer()
+	data := transactionsToProto(generateTransactions(1000000))
+	encodedData, _ := proto.Marshal(data)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		var decoded pbBenchmark.Transactions
+		_ = proto.Unmarshal(encodedData, &decoded)
+	}
 }

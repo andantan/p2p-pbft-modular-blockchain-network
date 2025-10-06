@@ -32,7 +32,7 @@ Tests were run on an `Intel(R) Core(TM) i5-1035G7 CPU @ 1.20GHz`.
 
 ### Analysis 🧐
 
-The results clearly demonstrate that **Protocol Buffers is significantly superior to Gob** across all tested metrics, especially as the number of transactions increases.
+The results clearly demonstrate that **Protocol Buffers is significantly superior to Gob** across all tested metrics, especially as the number of Transactions increases.
 
 -   **Speed 🚀**: Protobuf is consistently **4 to 6 times faster** in both encoding and decoding operations. This is primarily because Protobuf uses pre-generated, highly optimized serialization code, whereas Gob relies on runtime reflection, which is inherently slower.
 

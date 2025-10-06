@@ -15,6 +15,10 @@ type Body struct {
 }
 
 func NewBody(txx []*Transaction) *Body {
+	if txx == nil {
+		txx = make([]*Transaction, 0)
+	}
+
 	return &Body{
 		Transactions: txx,
 	}
@@ -30,7 +34,7 @@ func (b *Body) CalculateMerkleRoot() (types.Hash, error) {
 	}
 
 	if len(b.Transactions) == 0 {
-		return types.Hash{}, errors.New("cannot calculate merkle root of empty transactions")
+		return types.ZeroHash, nil
 	}
 
 	sort.Slice(b.Transactions, func(i, j int) bool {

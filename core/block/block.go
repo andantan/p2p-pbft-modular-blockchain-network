@@ -150,9 +150,14 @@ func (b *Block) FromProto(msg proto.Message) error {
 
 	var (
 		err       error
+		hash      types.Hash
 		proposer  *crypto.PublicKey
 		signature *crypto.Signature
 	)
+
+	if hash, err = b.Header.Hash(); err != nil {
+		return err
+	}
 
 	if proposer, err = crypto.PublicKeyFromBytes(p.Proposer); err != nil {
 		return err
@@ -162,6 +167,7 @@ func (b *Block) FromProto(msg proto.Message) error {
 		return err
 	}
 
+	b.blockHash = hash
 	b.Proposer = proposer
 	b.Signature = signature
 
@@ -170,4 +176,12 @@ func (b *Block) FromProto(msg proto.Message) error {
 
 func (b *Block) EmptyProto() proto.Message {
 	return &pb.Block{}
+}
+
+func (b *Block) GetHeight() uint64 {
+	return b.Header.Height
+}
+
+func (b *Block) GetWeight() uint64 {
+	return b.Header.Weight
 }

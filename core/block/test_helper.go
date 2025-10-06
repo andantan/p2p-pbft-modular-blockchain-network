@@ -67,6 +67,21 @@ func GenerateRandomTestHeaderWithBody(t *testing.T, b *Body) *Header {
 	}
 }
 
+func GenerateRandomTestHeaderWithBodyAndHeight(t *testing.T, b *Body, h uint64) *Header {
+	t.Helper()
+
+	m, err := b.CalculateMerkleRoot()
+	assert.NoError(t, err)
+
+	return &Header{
+		Version:       Version,
+		MerkleRoot:    m,
+		PrevBlockHash: util.RandomHash(),
+		Timestamp:     time.Now().UnixNano(),
+		Height:        h,
+	}
+}
+
 func MarshallTestHeader(t *testing.T, h *Header) []byte {
 	t.Helper()
 
@@ -115,6 +130,24 @@ func GenerateRandomBlock(t *testing.T, txCount int) *Block {
 
 	body := GenerateRandomTestBody(t, txCount)
 	header := GenerateRandomTestHeaderWithBody(t, body)
+
+	block, err := NewBlock(header, body)
+	assert.NoError(t, err)
+
+	privKey, _ := crypto.GenerateTestKeyPair(t)
+
+	assert.NoError(t, block.Sign(privKey))
+	assert.NotNil(t, block.Signature)
+	assert.NoError(t, block.Verify())
+
+	return block
+}
+
+func GenerateRandomBlockWithHeight(t *testing.T, txCount int, h uint64) *Block {
+	t.Helper()
+
+	body := GenerateRandomTestBody(t, txCount)
+	header := GenerateRandomTestHeaderWithBodyAndHeight(t, body, h)
 
 	block, err := NewBlock(header, body)
 	assert.NoError(t, err)

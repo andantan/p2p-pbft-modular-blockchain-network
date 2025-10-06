@@ -4,7 +4,7 @@ This benchmark provides an in-depth performance comparison between Go's native `
 
 ## Results
 
-Tests were run on an `Intel(R) Core(TM) i5-1035G7 CPU @ 1.20GHz`. The benchmark matrix covers various combinations of block counts and transactions per block.
+Tests were run on an `Intel(R) Core(TM) i5-1035G7 CPU @ 1.20GHz`. The benchmark matrix covers various combinations of block counts and Transactions per block.
 
 *Note: Benchmarks with 500 blocks were omitted as they consumed excessive memory resources, highlighting the scalability challenges with `gob`.*
 

@@ -5,6 +5,30 @@ import (
 	"testing"
 )
 
+func TestNewBody_WithNil(t *testing.T) {
+	originalBody := NewBody(nil)
+
+	assert.NotNil(t, originalBody)
+	assert.NotNil(t, originalBody.Transactions)
+	assert.Empty(t, originalBody.Transactions)
+	assert.Equal(t, 0, len(originalBody.Transactions))
+
+	// Marshalling
+	encodedBytes := MarshallTestBody(t, originalBody)
+	// UnMarshalling
+	decodedBody := UnmarshallTestBody(t, encodedBytes)
+
+	assert.NotNil(t, decodedBody)
+	assert.NotNil(t, decodedBody.Transactions)
+	assert.Empty(t, decodedBody.Transactions)
+	assert.Equal(t, 0, len(decodedBody.Transactions))
+
+	rootOrig, _ := originalBody.CalculateMerkleRoot()
+	rootDecode, _ := decodedBody.CalculateMerkleRoot()
+	assert.True(t, rootOrig.Eq(rootDecode))
+	assert.Equal(t, len(originalBody.Transactions), len(decodedBody.Transactions))
+}
+
 func TestBody_CalculateMerkleRoot(t *testing.T) {
 	bodyWithOneTx := GenerateRandomTestBody(t, 1)
 	root1, err := bodyWithOneTx.CalculateMerkleRoot()
@@ -28,9 +52,9 @@ func TestBody_CalculateMerkleRoot(t *testing.T) {
 	assert.False(t, root2.IsZero())
 	assert.True(t, root2.Eq(root3))
 
-	bodyEmpty := &Body{Transactions: []*Transaction{}}
+	bodyEmpty := NewBody(nil)
 	_, err = bodyEmpty.CalculateMerkleRoot()
-	assert.Error(t, err)
+	assert.NoError(t, err)
 }
 
 func TestBody_EncodeDecode(t *testing.T) {

@@ -54,7 +54,7 @@ func (x *Transactions) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Transactions.ProtoReflect.Descriptor instead.
+// Deprecated: Use transactions.ProtoReflect.Descriptor instead.
 func (*Transactions) Descriptor() ([]byte, []int) {
 	return file_proto_benchmark_transaction_benchmark_proto_rawDescGZIP(), []int{0}
 }
@@ -88,11 +88,11 @@ func file_proto_benchmark_transaction_benchmark_proto_rawDescGZIP() []byte {
 
 var file_proto_benchmark_transaction_benchmark_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_proto_benchmark_transaction_benchmark_proto_goTypes = []any{
-	(*Transactions)(nil),      // 0: benchmark.Transactions
+	(*Transactions)(nil),      // 0: benchmark.transactions
 	(*block.Transaction)(nil), // 1: block.Transaction
 }
 var file_proto_benchmark_transaction_benchmark_proto_depIdxs = []int32{
-	1, // 0: benchmark.Transactions.txx:type_name -> block.Transaction
+	1, // 0: benchmark.transactions.txx:type_name -> block.Transaction
 	1, // [1:1] is the sub-list for method output_type
 	1, // [1:1] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name

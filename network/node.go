@@ -56,7 +56,7 @@ func NewTCPNode(
 		peerSet:    types.NewAtomicSet[types.Address](),
 	}
 
-	t.logger = util.LoggerWithPrefixes("node", "address", t.address.ShortString(8), "listen-addr", t.listenAddr)
+	t.logger = util.LoggerWithPrefixes("Node", "address", t.address.ShortString(8), "listen-addr", t.listenAddr)
 
 	return t
 }
