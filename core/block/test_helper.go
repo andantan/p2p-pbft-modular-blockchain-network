@@ -125,7 +125,7 @@ func UnmarshallTestBody(t *testing.T, b []byte) *Body {
 	return body
 }
 
-func GenerateRandomBlock(t *testing.T, txCount int) *Block {
+func GenerateRandomTestBlock(t *testing.T, txCount int) *Block {
 	t.Helper()
 
 	body := GenerateRandomTestBody(t, txCount)
@@ -143,7 +143,7 @@ func GenerateRandomBlock(t *testing.T, txCount int) *Block {
 	return block
 }
 
-func GenerateRandomBlockWithHeight(t *testing.T, txCount int, h uint64) *Block {
+func GenerateRandomTestBlockWithHeight(t *testing.T, txCount int, h uint64) *Block {
 	t.Helper()
 
 	body := GenerateRandomTestBody(t, txCount)
@@ -159,6 +159,21 @@ func GenerateRandomBlockWithHeight(t *testing.T, txCount int, h uint64) *Block {
 	assert.NoError(t, block.Verify())
 
 	return block
+}
+
+func GenerateRandomTestBlockWithPrevHeader(t *testing.T, h *Header, txCount int) *Block {
+	t.Helper()
+
+	bd := GenerateRandomTestBody(t, txCount)
+	b, err := NewBlockFromPrevHeader(h, bd)
+	assert.NoError(t, err)
+
+	privKey, _ := crypto.GenerateTestKeyPair(t)
+	assert.NoError(t, b.Sign(privKey))
+	assert.NotNil(t, b.Signature)
+	assert.NoError(t, b.Verify())
+
+	return b
 }
 
 func MarshallTestBlock(t *testing.T, block *Block) []byte {

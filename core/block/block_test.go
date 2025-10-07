@@ -7,7 +7,7 @@ import (
 )
 
 func TestBlock_SignAndVerify(t *testing.T) {
-	block := GenerateRandomBlock(t, 1<<6)
+	block := GenerateRandomTestBlock(t, 1<<6)
 
 	// Tempering proposer
 	otherPrivKey, _ := crypto.GeneratePrivateKey()
@@ -16,7 +16,7 @@ func TestBlock_SignAndVerify(t *testing.T) {
 }
 
 func TestBlock_EncodeDecode(t *testing.T) {
-	block := GenerateRandomBlock(t, 1<<10)
+	block := GenerateRandomTestBlock(t, 1<<10)
 
 	// Marshalling
 	encodedBytes := MarshallTestBlock(t, block)

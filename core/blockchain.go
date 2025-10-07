@@ -16,21 +16,65 @@ type Blockchain struct {
 	contract       contract.Contract
 }
 
-func NewBlockchain(bs Storer, bp Processor) *Blockchain {
-	if bs == nil || bp == nil {
-		panic("storer & processor is nil")
+func NewBlockchain() *Blockchain {
+	return &Blockchain{
+		logger: util.LoggerWithPrefixes("Blockchain"),
+	}
+}
+
+func (bc *Blockchain) SetStorer(s Storer) {
+	bc.blockStorer = s
+}
+
+func (bc *Blockchain) SetBlockProcessor(p Processor) {
+	bc.blockProcessor = p
+}
+
+func (bc *Blockchain) SetContract(c contract.Contract) {
+	bc.contract = c
+}
+
+func (bc *Blockchain) Bootstrap() {
+	if bc.blockStorer == nil {
+		panic("Storer is nil")
 	}
 
-	bc := &Blockchain{
-		logger:         util.LoggerWithPrefixes("Blockchain"),
-		blockStorer:    bs,
-		blockProcessor: bp,
-		contract:       nil,
+	if bc.blockProcessor == nil {
+		panic("Processor is nil")
 	}
 
-	bc.bootstrap()
+	//if bc.contract == nil {
+	//	panic("Contract is nil")
+	//}
 
-	return bc
+	if err := bc.blockStorer.LoadStorage(); err != nil {
+		panic(err)
+	}
+
+	height := bc.CurrentHeight()
+
+	if height == 0 {
+		if err := bc.AddBlock(block.NewGenesisBlock()); err != nil {
+			panic(err)
+		}
+
+		return
+	}
+
+	for h := uint64(0); h <= height; h++ {
+		b, err := bc.GetBlockByHeight(h)
+
+		if err != nil {
+			panic(err)
+		}
+
+		if err = bc.blockProcessor.ProcessBlock(b); err != nil {
+			panic(err)
+		}
+
+		hash, _ := b.Hash()
+		_ = bc.logger.Log("msg", "verified block", "height", height, "hash", hash.String())
+	}
 }
 
 func (bc *Blockchain) AddBlock(b *block.Block) error {
@@ -57,8 +101,51 @@ func (bc *Blockchain) AddBlock(b *block.Block) error {
 	return bc.blockStorer.StoreBlock(b)
 }
 
+func (bc *Blockchain) Rollback(from uint64) error {
+	ch := bc.CurrentHeight()
+
+	if ch < from {
+		return nil
+	}
+
+	_ = bc.logger.Log("msg", "rolling back chain", "from", from, "to", ch)
+
+	for h := ch; h >= from; h-- {
+		if err := bc.blockStorer.RemoveBlock(h); err != nil {
+			_ = bc.logger.Log(
+				"error", "failed to remove block from storage",
+				"height", h,
+				"err", err,
+			)
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (bc *Blockchain) Clear() error {
+	if err := bc.blockStorer.ClearStorage(); err != nil {
+		return err
+	}
+
+	if err := bc.AddBlock(block.NewGenesisBlock()); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (bc *Blockchain) CurrentHeight() uint64 {
 	return bc.blockStorer.CurrentHeight()
+}
+
+func (bc *Blockchain) CurrentBlock() (*block.Block, error) {
+	return bc.GetBlockByHeight(bc.CurrentHeight())
+}
+
+func (bc *Blockchain) CurrentHeader() (*block.Header, error) {
+	return bc.GetHeaderByHeight(bc.CurrentHeight())
 }
 
 func (bc *Blockchain) GetBlockByHeight(h uint64) (*block.Block, error) {
@@ -83,16 +170,4 @@ func (bc *Blockchain) HasBlockHash(h types.Hash) bool {
 
 func (bc *Blockchain) HasBlockHeight(h uint64) bool {
 	return bc.blockStorer.HasBlockHeight(h)
-}
-
-func (bc *Blockchain) Clear() error {
-	return bc.blockStorer.ClearStorage()
-}
-
-func (bc *Blockchain) bootstrap() {
-	if err := bc.blockStorer.LoadStorage(); err != nil {
-		panic(err)
-	}
-
-	panic("todo!")
 }
