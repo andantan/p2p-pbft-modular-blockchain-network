@@ -60,6 +60,41 @@ func NewBlockFromPrevHeader(prevHeader *Header, newBody *Body) (*Block, error) {
 	return NewBlock(h, newBody)
 }
 
+func NewGenesisBlock() *Block {
+	h := &Header{
+		Version:       0,
+		MerkleRoot:    types.ZeroHash,
+		PrevBlockHash: types.FFHash,
+		Timestamp:     0,
+		Height:        0,
+		Weight:        0,
+		StateRoot:     types.ZeroHash,
+		Nonce:         0,
+	}
+
+	bd := &Body{
+		Transactions: []*Transaction{},
+	}
+
+	b, err := NewBlock(h, bd)
+
+	p, err := crypto.GeneratePrivateKey()
+
+	if err != nil {
+		panic(err)
+	}
+
+	if err = b.Sign(p); err != nil {
+		panic(err)
+	}
+
+	if err = b.Verify(); err != nil {
+		panic(err)
+	}
+
+	return b
+}
+
 func (b *Block) Hash() (types.Hash, error) {
 	if !b.blockHash.IsZero() {
 		return b.blockHash, nil

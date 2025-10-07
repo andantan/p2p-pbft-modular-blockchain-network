@@ -78,6 +78,12 @@ func (bs *BlockStorage) LoadStorage() error {
 	_ = bs.logger.Log("msg", "loading blocks from storage...")
 
 	for _, file := range files {
+		var (
+			blockBytes []byte
+			b          = new(block.Block)
+			h          types.Hash
+		)
+
 		if file.IsDir() || !strings.HasSuffix(file.Name(), bs.ext) {
 			continue
 		}
@@ -91,20 +97,19 @@ func (bs *BlockStorage) LoadStorage() error {
 
 		filePath := filepath.Join(bs.dir, file.Name())
 
-		hb, err := os.ReadFile(filePath)
-
-		if err != nil {
+		if blockBytes, err = os.ReadFile(filePath); err != nil {
 			_ = bs.logger.Log("msg", "failed to read block file", "path", filePath, "err", err)
 			continue
 		}
 
-		b := new(block.Block)
-		if err = codec.DecodeProto(hb, b); err != nil {
+		if err = codec.DecodeProto(blockBytes, b); err != nil {
 			_ = bs.logger.Log("msg", "failed to decode block file", "path", filePath, "err", err)
 			continue
 		}
 
-		h, _ := b.Hash()
+		if h, err = b.Hash(); err != nil {
+			return err
+		}
 
 		bs.set.Put(h)
 		bs.index.Put(b.Header.Height, h)
@@ -124,7 +129,7 @@ func (bs *BlockStorage) ClearStorage() error {
 	bs.set = types.NewAtomicSet[types.Hash]()
 	bs.index = types.NewAtomicMap[uint64, types.Hash]()
 
-	return nil
+	return os.MkdirAll(bs.dir, os.ModePerm)
 }
 
 func (bs *BlockStorage) StoreBlock(b *block.Block) error {
@@ -241,6 +246,5 @@ func (bs *BlockStorage) HasBlockHash(h types.Hash) bool {
 }
 
 func (bs *BlockStorage) HasBlockHeight(height uint64) bool {
-	_, ok := bs.index.Get(height)
-	return ok
+	return bs.index.Exists(height)
 }
