@@ -44,7 +44,7 @@ func TestNewBlockFromPrevHeader(t *testing.T) {
 	merkleRoot, _ := body.CalculateMerkleRoot()
 	assert.True(t, merkleRoot.Eq(block.Header.MerkleRoot))
 
-	assert.Equal(t, body.Weight(), block.Header.Weight)
+	assert.Equal(t, body.GetWeight(), block.Header.Weight)
 
 	blockHash, _ := block.Hash()
 	assert.False(t, blockHash.IsZero())

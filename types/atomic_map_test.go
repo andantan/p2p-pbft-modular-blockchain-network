@@ -10,7 +10,7 @@ import (
 func TestMap_BasicCRUD(t *testing.T) {
 	m := NewAtomicMap[string, int]()
 
-	// Put & Len
+	// Put & GetWeight
 	m.Put("apple", 10)
 	m.Put("banana", 20)
 	assert.Equal(t, 2, m.Len())
@@ -91,7 +91,7 @@ func TestMap_RaceCondition(t *testing.T) {
 			m.Put(key, i)
 			m.PutIfNotExists(key, i*100)
 
-			// Get, Exists, Len
+			// Get, Exists, GetWeight
 			_, _ = m.Get(key)
 			_ = m.Exists(key)
 			_ = m.Len()

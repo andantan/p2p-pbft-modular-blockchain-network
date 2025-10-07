@@ -31,7 +31,7 @@ func NewBlockProcessor(chain *Blockchain) *BlockProcessor {
 }
 
 func (p *BlockProcessor) ProcessBlock(b *block.Block) error {
-	height := b.GetHeight()
+	height := b.Header.Height
 
 	if height == 0 {
 		return b.Verify()

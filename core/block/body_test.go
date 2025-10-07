@@ -36,15 +36,16 @@ func TestBody_CalculateMerkleRoot(t *testing.T) {
 	tx1Hash, _ := bodyWithOneTx.Transactions[0].Hash()
 	assert.True(t, root1.Eq(tx1Hash))
 
-	bodyWithTwoTxs := GenerateRandomTestBody(t, 2)
+	bodyWithThreeTxs := GenerateRandomTestBody(t, 3)
 	bodyWithReversedTxs := &Body{
 		Transactions: []*Transaction{
-			bodyWithTwoTxs.Transactions[1],
-			bodyWithTwoTxs.Transactions[0],
+			bodyWithThreeTxs.Transactions[2],
+			bodyWithThreeTxs.Transactions[1],
+			bodyWithThreeTxs.Transactions[0],
 		},
 	}
 
-	root2, err := bodyWithTwoTxs.CalculateMerkleRoot()
+	root2, err := bodyWithThreeTxs.CalculateMerkleRoot()
 	assert.NoError(t, err)
 	root3, err := bodyWithReversedTxs.CalculateMerkleRoot()
 	assert.NoError(t, err)

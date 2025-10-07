@@ -94,8 +94,8 @@ func (bc *Blockchain) AddBlock(b *block.Block) error {
 	_ = bc.logger.Log(
 		"msg", "new block added",
 		"hash", hash.ShortString(8),
-		"height", b.GetHeight(),
-		"weight", b.GetWeight(),
+		"height", b.Header.Height,
+		"weight", b.Header.Weight,
 	)
 
 	return bc.blockStorer.StoreBlock(b)

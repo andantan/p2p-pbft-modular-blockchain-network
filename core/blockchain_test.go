@@ -48,7 +48,7 @@ func TestBlockchain_AddBlock(t *testing.T) {
 func TestBlockchain_Rollback(t *testing.T) {
 	bc := GenerateTestBlockchain(t)
 
-	AddTestBlocks(t, bc, 10)
+	AddTestBlocksToBlockchain(t, bc, 10)
 
 	// Rollback to 5
 	assert.NoError(t, bc.Rollback(5))
@@ -56,14 +56,14 @@ func TestBlockchain_Rollback(t *testing.T) {
 	assert.True(t, bc.HasBlockHeight(4))
 	assert.False(t, bc.HasBlockHeight(5))
 
-	AddTestBlocks(t, bc, 1)
+	AddTestBlocksToBlockchain(t, bc, 1)
 	assert.Equal(t, uint64(5), bc.CurrentHeight())
 }
 
 func TestBlockchain_Clear(t *testing.T) {
 	bc := GenerateTestBlockchain(t)
 
-	AddTestBlocks(t, bc, 20)
+	AddTestBlocksToBlockchain(t, bc, 20)
 
 	assert.NoError(t, bc.Clear())
 
@@ -94,7 +94,7 @@ func TestBlockchain_ConcurrentReadAndWrite(t *testing.T) {
 			case <-ctx.Done(): // 테스트 종료 신호
 				return
 			case <-ticker.C:
-				AddTestBlocks(t, bc, 1)
+				AddTestBlocksToBlockchain(t, bc, 1)
 			}
 		}
 	}()

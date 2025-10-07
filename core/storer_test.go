@@ -21,7 +21,7 @@ func TestBlockStorage_StoreAndGetBlock(t *testing.T) {
 
 	assert.NoError(t, bs.StoreBlock(b1))
 
-	b1Read, err := bs.GetBlockByHeight(b1.GetHeight())
+	b1Read, err := bs.GetBlockByHeight(b1.Header.Height)
 	assert.NoError(t, err)
 
 	b1Hash, _ := b1.Hash()
@@ -39,7 +39,7 @@ func TestBlockStorer_LoadStorage(t *testing.T) {
 
 	bs1 := NewBlockStorage(dir)
 	b0 := block.GenerateRandomTestBlock(t, 1<<11)
-	b1 := block.GenerateRandomTestBlockWithHeight(t, 1<<13, b0.GetHeight()+1)
+	b1 := block.GenerateRandomTestBlockWithHeight(t, 1<<13, b0.Header.Height+1)
 	assert.NoError(t, bs1.StoreBlock(b0))
 	assert.NoError(t, bs1.StoreBlock(b1))
 
@@ -47,7 +47,7 @@ func TestBlockStorer_LoadStorage(t *testing.T) {
 	assert.NoError(t, bs2.LoadStorage())
 
 	assert.Equal(t, uint64(1), bs2.CurrentHeight())
-	assert.True(t, bs2.HasBlockHeight(b0.GetHeight()))
+	assert.True(t, bs2.HasBlockHeight(b0.Header.Height))
 
 	b0Hash, err := b0.Hash()
 	assert.NoError(t, err)

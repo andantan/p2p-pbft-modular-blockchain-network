@@ -23,12 +23,12 @@ func GenerateTestBlockchain(t *testing.T) *Blockchain {
 	return bc
 }
 
-func AddTestBlocks(t *testing.T, bc *Blockchain, amount uint64) {
+func AddTestBlocksToBlockchain(t *testing.T, bc *Blockchain, c uint64) {
 	t.Helper()
 
 	beforeHeight := bc.CurrentHeight()
 
-	for i := uint64(1); i < amount+1; i++ {
+	for i := uint64(1); i < c+1; i++ {
 		hr, err := bc.CurrentHeader()
 		assert.NoError(t, err)
 
@@ -40,4 +40,13 @@ func AddTestBlocks(t *testing.T, bc *Blockchain, amount uint64) {
 		assert.True(t, bc.HasBlockHash(h))
 		assert.True(t, bc.HasBlockHeight(bc.CurrentHeight()))
 	}
+}
+
+func GenerateTestMempool(t *testing.T, c int) *MemPool {
+	t.Helper()
+
+	m := NewMemPool(c)
+	assert.Equal(t, 0, m.Count())
+
+	return m
 }
