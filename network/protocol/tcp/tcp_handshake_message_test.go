@@ -1,4 +1,4 @@
-package message
+package tcp
 
 import (
 	"github.com/andantan/p2p-pbft-modular-blockchain-network/codec"
@@ -8,7 +8,7 @@ import (
 )
 
 func TestHandshakeMessage_SignVerify(t *testing.T) {
-	msg, _ := GenerateTestHandshakeMessage(t, "127.0.0.1:4000")
+	msg, _ := GenerateTestTCPHandshakeMessage(t, "127.0.0.1:4000")
 
 	otherPrivKey, _ := crypto.GeneratePrivateKey()
 	msg.PublicKey = otherPrivKey.PublicKey()
@@ -16,14 +16,14 @@ func TestHandshakeMessage_SignVerify(t *testing.T) {
 }
 
 func TestHandshakeMessage_EncodeDecode(t *testing.T) {
-	originMsg, _ := GenerateTestHandshakeMessage(t, "127.0.0.1:4000")
+	originMsg, _ := GenerateTestTCPHandshakeMessage(t, "127.0.0.1:4000")
 
 	// Marshalling
 	encodedBytes, err := codec.EncodeProto(originMsg)
 	assert.NoError(t, err)
 
 	// UnMarshalling
-	decodedMsg := new(HandshakeMessage)
+	decodedMsg := new(TCPHandshakeMessage)
 	assert.NoError(t, codec.DecodeProto(encodedBytes, decodedMsg))
 
 	assert.NoError(t, decodedMsg.Verify())

@@ -1,4 +1,4 @@
-package message
+package pbft
 
 import (
 	"github.com/andantan/p2p-pbft-modular-blockchain-network/codec"
@@ -79,4 +79,50 @@ func TestPbftCommitMessage_EncodeDecode(t *testing.T) {
 	decodedHash, err := decodedMsg.Hash()
 	assert.NoError(t, err)
 	assert.Equal(t, originHash, decodedHash)
+}
+
+func TestPbftViewChangeMessage_SignVerify(t *testing.T) {
+	msg, _ := GenerateTestPbftViewChangeMessage(t, 1, 10)
+
+	otherKey, _ := crypto.GeneratePrivateKey()
+	msg.PublicKey = otherKey.PublicKey()
+	assert.Error(t, msg.Verify())
+}
+
+func TestPbftViewChangeMessage_EncodeDecode(t *testing.T) {
+	msg, _ := GenerateTestPbftViewChangeMessage(t, 1, 10)
+
+	encoded, err := codec.EncodeProto(msg)
+	assert.NoError(t, err)
+
+	decodedMsg := new(PbftViewChangeMessage)
+	assert.NoError(t, codec.DecodeProto(encoded, decodedMsg))
+
+	originHash, err := msg.Hash()
+	assert.NoError(t, err)
+	decodedHash, err := decodedMsg.Hash()
+	assert.NoError(t, err)
+	assert.Equal(t, originHash, decodedHash)
+}
+
+func TestPbftNewViewMessage_SignVerify(t *testing.T) {
+	msg, _ := GenerateTestPbftNewViewMessage(t, 1, 10, 10)
+
+	otherKey, _ := crypto.GeneratePrivateKey()
+	msg.PublicKey = otherKey.PublicKey()
+	assert.Error(t, msg.Verify())
+}
+
+func TestPbftNewViewMessage_EncodeDecode(t *testing.T) {
+	msg, _ := GenerateTestPbftNewViewMessage(t, 1, 10, 8)
+
+	encoded, err := codec.EncodeProto(msg)
+	assert.NoError(t, err)
+
+	decodedMsg := new(PbftNewViewMessage)
+	assert.NoError(t, codec.DecodeProto(encoded, decodedMsg))
+
+	assert.Equal(t, msg.NewView, decodedMsg.NewView)
+	assert.Equal(t, len(msg.ViewChangeMessages), len(decodedMsg.ViewChangeMessages))
+	assert.NotNil(t, decodedMsg.PrePrepareMessage)
 }

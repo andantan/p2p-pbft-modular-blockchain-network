@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package pbft;
+option go_package = "github.com/andantan/p2p-pbft-modular-blockchain-network/proto/network/consensus/pbft";
+
+import "proto/core/block/block.proto";
+
+// --- PBFT 3-Phase Commit Messages ---
+
+message PbftPrePrepareMessage {
+  uint64 view = 1;
+  uint64 sequence = 2;
+  block.Block block = 3;
+  bytes public_key = 4;
+  bytes signature = 5;
+}
+
+message PbftPrepareMessage {
+  uint64 view = 1;
+  uint64 sequence = 2;
+  bytes block_hash = 3;
+  bytes public_key = 4;
+  bytes signature = 5;
+}
+
+message PbftCommitMessage {
+  uint64 view = 1;
+  uint64 sequence = 2;
+  bytes block_hash = 3;
+  bytes public_key = 4;
+  bytes signature = 5;
+}
+
+// --- PBFT View Change Messages ---
+
+message PbftViewChangeMessage {
+  uint64 new_view = 1;
+  uint64 sequence = 2;
+  bytes public_key = 3;
+  bytes signature = 4;
+}
+
+message PbftNewViewMessage {
+  uint64 new_view = 1;
+  uint64 sequence = 2;
+  repeated PbftViewChangeMessage view_change_messages = 3;
+  PbftPrePrepareMessage pre_prepare_message = 4;
+  bytes public_key = 5;
+  bytes signature = 6;
+}

@@ -1,4 +1,4 @@
-package network
+package tcp
 
 import (
 	"github.com/andantan/p2p-pbft-modular-blockchain-network/crypto"
@@ -16,17 +16,17 @@ func TestTCPNode_ConnectAndAccept(t *testing.T) {
 
 	privKeyA, _ := crypto.GeneratePrivateKey()
 	msgChA := make(chan message.RawMessage)
-	newPeerChA := make(chan Peer)
-	delPeerChA := make(chan Peer)
+	newPeerChA := make(chan *TcpPeer)
+	delPeerChA := make(chan *TcpPeer)
 	stopChA := make(chan struct{})
-	nodeA := NewTCPNode(privKeyA, nodeANetAddr, msgChA, newPeerChA, delPeerChA, stopChA)
+	nodeA := NewTcpNode(privKeyA, nodeANetAddr, msgChA, newPeerChA, delPeerChA, stopChA)
 
 	privKeyB, _ := crypto.GeneratePrivateKey()
 	msgChB := make(chan message.RawMessage)
-	newPeerChB := make(chan Peer)
-	delPeerChB := make(chan Peer)
+	newPeerChB := make(chan *TcpPeer)
+	delPeerChB := make(chan *TcpPeer)
 	stopChB := make(chan struct{})
-	nodeB := NewTCPNode(privKeyB, nodeBNetAddr, msgChB, newPeerChB, delPeerChB, stopChB)
+	nodeB := NewTcpNode(privKeyB, nodeBNetAddr, msgChB, newPeerChB, delPeerChB, stopChB)
 
 	go nodeA.Listen()
 
@@ -66,15 +66,15 @@ func TestTCPNode_Stop(t *testing.T) {
 	nodeANetAddr := ":6000"
 	privKey, _ := crypto.GeneratePrivateKey()
 	msgCh := make(chan message.RawMessage)
-	newPeerCh := make(chan Peer)
-	delPeerCh := make(chan Peer)
+	newPeerCh := make(chan *TcpPeer)
+	delPeerCh := make(chan *TcpPeer)
 	stopCh := make(chan struct{})
 
 	defer close(msgCh)
 	defer close(newPeerCh)
 	defer close(delPeerCh)
 
-	node := NewTCPNode(privKey, nodeANetAddr, msgCh, newPeerCh, delPeerCh, stopCh)
+	node := NewTcpNode(privKey, nodeANetAddr, msgCh, newPeerCh, delPeerCh, stopCh)
 
 	go node.Listen()
 
@@ -101,19 +101,19 @@ func TestTCPNode_TieBreaking(t *testing.T) {
 	assert.NoError(t, err)
 	nodeANetAddr := ":7000"
 	msgChA := make(chan message.RawMessage)
-	newPeerChA := make(chan Peer)
-	delPeerChA := make(chan Peer)
+	newPeerChA := make(chan *TcpPeer)
+	delPeerChA := make(chan *TcpPeer)
 	stopChA := make(chan struct{})
-	nodeA := NewTCPNode(privKeyA, nodeANetAddr, msgChA, newPeerChA, delPeerChA, stopChA)
+	nodeA := NewTcpNode(privKeyA, nodeANetAddr, msgChA, newPeerChA, delPeerChA, stopChA)
 
 	privKeyB, err := crypto.GeneratePrivateKey()
 	assert.NoError(t, err)
 	nodeBNetAddr := ":8000"
 	msgChB := make(chan message.RawMessage)
-	newPeerChB := make(chan Peer)
-	delPeerChB := make(chan Peer)
+	newPeerChB := make(chan *TcpPeer)
+	delPeerChB := make(chan *TcpPeer)
 	stopChB := make(chan struct{})
-	nodeB := NewTCPNode(privKeyB, nodeBNetAddr, msgChB, newPeerChB, delPeerChB, stopChB)
+	nodeB := NewTcpNode(privKeyB, nodeBNetAddr, msgChB, newPeerChB, delPeerChB, stopChB)
 
 	go nodeA.Listen()
 	t.Cleanup(func() {
