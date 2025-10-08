@@ -25,10 +25,10 @@ func TestHeader_Hash(t *testing.T) {
 	hash2, err := (&h2).Hash()
 	assert.NoError(t, err)
 
-	assert.True(t, hash1.Eq(hash2))
+	assert.True(t, hash1.Equal(hash2))
 
 	h2.Version = 2
 	hash3, err := (&h2).Hash()
 	assert.NoError(t, err)
-	assert.False(t, hash1.Eq(hash3))
+	assert.False(t, hash1.Equal(hash3))
 }

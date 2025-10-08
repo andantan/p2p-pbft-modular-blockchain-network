@@ -8,14 +8,15 @@ import (
 )
 
 var (
-	ErrMempoolFull = errors.New("mempool is full")
+	ErrMempoolEmpty = errors.New("mempool is empty")
+	ErrMempoolFull  = errors.New("mempool is full")
 )
 
 type VirtualMemoryPool interface {
 	Put(*block.Transaction) error
 	Contains(*block.Transaction) bool
 	Prune([]*block.Transaction)
-	Pending() []*block.Transaction
+	Pending() ([]*block.Transaction, error)
 	Count() int
 	Clear()
 }
@@ -72,11 +73,15 @@ func (mp *MemPool) Prune(txx []*block.Transaction) {
 	mp.pool.Prune(r)
 }
 
-func (mp *MemPool) Pending() []*block.Transaction {
+func (mp *MemPool) Pending() ([]*block.Transaction, error) {
 	mp.lock.RLock()
 	defer mp.lock.RUnlock()
 
-	return mp.pool.Values()
+	if mp.pool.Count() == 0 {
+		return nil, ErrMempoolEmpty
+	}
+
+	return mp.pool.Values(), nil
 }
 
 func (mp *MemPool) Count() int {

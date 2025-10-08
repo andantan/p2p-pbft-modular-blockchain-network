@@ -71,6 +71,8 @@ func (p *TCPPeer) Handshake(our *message.HandshakeMessage) (*message.HandshakeMe
 	errCh := make(chan error, 2) // Read, Write error
 	defer close(errCh)
 
+	_ = p.logger.Log("msg", "start handshake", "net-addr", p.conn.RemoteAddr())
+
 	// read message
 	go p.readHandshakeMessage(msgCh, errCh)
 
@@ -85,11 +87,13 @@ func (p *TCPPeer) Handshake(our *message.HandshakeMessage) (*message.HandshakeMe
 		p.publickey = *remoteMsg.PublicKey
 		p.address = remoteMsg.PublicKey.Address()
 		p.netAddr = remoteMsg.NetAddr
-
+		_ = p.logger.Log("msg", "successed handshake", "net-addr", p.NetAddr(), "addr", p.address.ShortString(8))
 		return remoteMsg, nil
 	case <-time.After(5 * time.Second):
 		_ = p.conn.Close()
-		return nil, fmt.Errorf("message-timeout")
+		err := fmt.Errorf("handshake-timeout")
+		_ = p.logger.Log("msg", "failed handshake", "err", err)
+		return nil, err
 	}
 }
 
@@ -123,9 +127,12 @@ func (p *TCPPeer) readHandshakeMessage(msgCh chan<- *message.HandshakeMessage, e
 	}
 
 	if err := h.Verify(); err != nil {
+		_ = p.logger.Log("msg", "received invalid handshake", "err", err)
 		errCh <- err
 		return
 	}
+
+	_ = p.logger.Log("msg", "received and verified handshakem messaage", "net-addr", h.NetAddr, "addr", h.PublicKey.Address().ShortString(8))
 
 	msgCh <- h
 }
@@ -143,6 +150,8 @@ func (p *TCPPeer) writeHandshakeMessage(our *message.HandshakeMessage, errCh cha
 
 	if _, err = p.conn.Write(append(lenBuf, payload...)); err != nil {
 		errCh <- err
+	} else {
+		_ = p.logger.Log("msg", "send handshake message", "net-addr", p.conn.RemoteAddr())
 	}
 }
 

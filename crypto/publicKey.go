@@ -1,6 +1,7 @@
 package crypto
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -52,4 +53,8 @@ func (k *PublicKey) String() string {
 	}
 
 	return fmt.Sprintf("PublicKey{%s...}", hex.EncodeToString(k.Key)[:16])
+}
+
+func (k *PublicKey) Equal(other *PublicKey) bool {
+	return bytes.Equal(k.Key, other.Key)
 }

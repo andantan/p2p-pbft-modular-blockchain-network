@@ -24,7 +24,7 @@ func TestTransaction_EncodeDecode(t *testing.T) {
 
 	hashOrig, _ := tx.Hash()
 	hashDecode, _ := dt.Hash()
-	assert.True(t, hashOrig.Eq(hashDecode))
+	assert.True(t, hashOrig.Equal(hashDecode))
 	assert.Equal(t, tx.Data, dt.Data)
 }
 
@@ -45,5 +45,5 @@ func TestTransaction_Hash(t *testing.T) {
 	hash2, err := tx.Hash()
 	assert.NoError(t, err)
 
-	assert.True(t, hash1.Eq(hash2))
+	assert.True(t, hash1.Equal(hash2))
 }

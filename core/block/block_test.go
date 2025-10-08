@@ -25,7 +25,7 @@ func TestBlock_EncodeDecode(t *testing.T) {
 
 	hashOrig, _ := block.Hash()
 	hashDecode, _ := decodedBlock.Hash()
-	assert.True(t, hashOrig.Eq(hashDecode))
+	assert.True(t, hashOrig.Equal(hashDecode))
 }
 
 func TestNewBlockFromPrevHeader(t *testing.T) {
@@ -39,10 +39,10 @@ func TestNewBlockFromPrevHeader(t *testing.T) {
 	assert.Equal(t, prevHeader.Height+1, block.Header.Height)
 
 	prevBlockHash, _ := prevHeader.Hash()
-	assert.True(t, prevBlockHash.Eq(block.Header.PrevBlockHash))
+	assert.True(t, prevBlockHash.Equal(block.Header.PrevBlockHash))
 
 	merkleRoot, _ := body.CalculateMerkleRoot()
-	assert.True(t, merkleRoot.Eq(block.Header.MerkleRoot))
+	assert.True(t, merkleRoot.Equal(block.Header.MerkleRoot))
 
 	assert.Equal(t, body.GetWeight(), block.Header.Weight)
 

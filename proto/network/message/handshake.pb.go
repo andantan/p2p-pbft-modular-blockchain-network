@@ -21,7 +21,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type Handshake struct {
+type HandshakeMessage struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	PublicKey     []byte                 `protobuf:"bytes,1,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
 	NetAddr       string                 `protobuf:"bytes,2,opt,name=net_addr,json=netAddr,proto3" json:"net_addr,omitempty"`
@@ -30,20 +30,20 @@ type Handshake struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *Handshake) Reset() {
-	*x = Handshake{}
+func (x *HandshakeMessage) Reset() {
+	*x = HandshakeMessage{}
 	mi := &file_proto_network_message_handshake_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *Handshake) String() string {
+func (x *HandshakeMessage) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Handshake) ProtoMessage() {}
+func (*HandshakeMessage) ProtoMessage() {}
 
-func (x *Handshake) ProtoReflect() protoreflect.Message {
+func (x *HandshakeMessage) ProtoReflect() protoreflect.Message {
 	mi := &file_proto_network_message_handshake_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -55,26 +55,26 @@ func (x *Handshake) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Handshake.ProtoReflect.Descriptor instead.
-func (*Handshake) Descriptor() ([]byte, []int) {
+// Deprecated: Use HandshakeMessage.ProtoReflect.Descriptor instead.
+func (*HandshakeMessage) Descriptor() ([]byte, []int) {
 	return file_proto_network_message_handshake_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *Handshake) GetPublicKey() []byte {
+func (x *HandshakeMessage) GetPublicKey() []byte {
 	if x != nil {
 		return x.PublicKey
 	}
 	return nil
 }
 
-func (x *Handshake) GetNetAddr() string {
+func (x *HandshakeMessage) GetNetAddr() string {
 	if x != nil {
 		return x.NetAddr
 	}
 	return ""
 }
 
-func (x *Handshake) GetSignature() []byte {
+func (x *HandshakeMessage) GetSignature() []byte {
 	if x != nil {
 		return x.Signature
 	}
@@ -85,8 +85,8 @@ var File_proto_network_message_handshake_proto protoreflect.FileDescriptor
 
 const file_proto_network_message_handshake_proto_rawDesc = "" +
 	"\n" +
-	"%proto/network/message/handshake.proto\x12\amessage\"c\n" +
-	"\tHandshake\x12\x1d\n" +
+	"%proto/network/message/handshake.proto\x12\amessage\"j\n" +
+	"\x10HandshakeMessage\x12\x1d\n" +
 	"\n" +
 	"public_key\x18\x01 \x01(\fR\tpublicKey\x12\x19\n" +
 	"\bnet_addr\x18\x02 \x01(\tR\anetAddr\x12\x1c\n" +
@@ -106,7 +106,7 @@ func file_proto_network_message_handshake_proto_rawDescGZIP() []byte {
 
 var file_proto_network_message_handshake_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_proto_network_message_handshake_proto_goTypes = []any{
-	(*Handshake)(nil), // 0: message.Handshake
+	(*HandshakeMessage)(nil), // 0: message.HandshakeMessage
 }
 var file_proto_network_message_handshake_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type

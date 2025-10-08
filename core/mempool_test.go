@@ -52,7 +52,10 @@ func TestMemPool_PruneAndClear(t *testing.T) {
 	assert.True(t, mp.Contains(txx[4]))
 
 	mp.Clear()
+	pendingTxs, err := mp.Pending()
+	assert.ErrorIs(t, err, ErrMempoolEmpty)
 	assert.Equal(t, 0, mp.Count())
+	assert.Nil(t, pendingTxs)
 }
 
 func TestMemPool_Pending(t *testing.T) {
@@ -63,15 +66,17 @@ func TestMemPool_Pending(t *testing.T) {
 	assert.NoError(t, mp.Put(tx1))
 	assert.NoError(t, mp.Put(tx2))
 
-	pendingTxs := mp.Pending()
+	pendingTxs, err := mp.Pending()
+	assert.NoError(t, err)
+	assert.NotNil(t, pendingTxs)
 	assert.Equal(t, 2, len(pendingTxs))
 
 	hash1, _ := tx1.Hash()
 	hash2, _ := tx2.Hash()
 	pendingHash1, _ := pendingTxs[0].Hash()
 	pendingHash2, _ := pendingTxs[1].Hash()
-	assert.True(t, hash1.Eq(pendingHash1))
-	assert.True(t, hash2.Eq(pendingHash2))
+	assert.True(t, hash1.Equal(pendingHash1))
+	assert.True(t, hash2.Equal(pendingHash2))
 }
 
 func TestMemPool_RaceCondition(t *testing.T) {

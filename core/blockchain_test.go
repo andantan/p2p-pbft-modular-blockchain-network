@@ -13,23 +13,23 @@ func TestNewBlockchain(t *testing.T) {
 	bc := GenerateTestBlockchain(t)
 	assert.NotNil(t, bc.blockStorer)
 	assert.NotNil(t, bc.blockProcessor)
-	assert.Equal(t, uint64(0), bc.CurrentHeight())
+	assert.Equal(t, uint64(0), bc.GetCurrentHeight())
 	assert.True(t, bc.HasBlockHeight(0))
 }
 
 func TestBlockchain_AddBlock(t *testing.T) {
 	bc := GenerateTestBlockchain(t)
 
-	h0, err := bc.CurrentHeader()
+	h0, err := bc.GetCurrentHeader()
 	assert.NoError(t, err)
 
 	b1 := block.GenerateRandomTestBlockWithPrevHeader(t, h0, 1<<5)
 	h1, err := b1.Hash()
 	assert.NoError(t, err)
 	assert.NoError(t, bc.AddBlock(b1))
-	assert.Equal(t, uint64(1), bc.CurrentHeight())
+	assert.Equal(t, uint64(1), bc.GetCurrentHeight())
 	assert.True(t, bc.HasBlockHash(h1))
-	assert.True(t, bc.HasBlockHeight(bc.CurrentHeight()))
+	assert.True(t, bc.HasBlockHeight(bc.GetCurrentHeight()))
 
 	// Case: ErrBlockKnown
 	assert.ErrorIs(t, bc.AddBlock(b1), ErrBlockKnown)
@@ -52,12 +52,12 @@ func TestBlockchain_Rollback(t *testing.T) {
 
 	// Rollback to 5
 	assert.NoError(t, bc.Rollback(5))
-	assert.Equal(t, uint64(4), bc.CurrentHeight())
+	assert.Equal(t, uint64(4), bc.GetCurrentHeight())
 	assert.True(t, bc.HasBlockHeight(4))
 	assert.False(t, bc.HasBlockHeight(5))
 
 	AddTestBlocksToBlockchain(t, bc, 1)
-	assert.Equal(t, uint64(5), bc.CurrentHeight())
+	assert.Equal(t, uint64(5), bc.GetCurrentHeight())
 }
 
 func TestBlockchain_Clear(t *testing.T) {
@@ -67,11 +67,11 @@ func TestBlockchain_Clear(t *testing.T) {
 
 	assert.NoError(t, bc.Clear())
 
-	assert.Equal(t, uint64(0), bc.CurrentHeight())
+	assert.Equal(t, uint64(0), bc.GetCurrentHeight())
 	assert.False(t, bc.HasBlockHeight(5))
 	assert.False(t, bc.HasBlockHeight(20))
 
-	assert.Equal(t, uint64(0), bc.CurrentHeight())
+	assert.Equal(t, uint64(0), bc.GetCurrentHeight())
 	assert.True(t, bc.HasBlockHeight(0))
 }
 
@@ -109,7 +109,7 @@ func TestBlockchain_ConcurrentReadAndWrite(t *testing.T) {
 				case <-ctx.Done():
 					return
 				default:
-					h := bc.CurrentHeight()
+					h := bc.GetCurrentHeight()
 					if h > 0 {
 						_, _ = bc.GetBlockByHeight(h)
 					}

@@ -8,6 +8,23 @@ import (
 	"github.com/go-kit/log"
 )
 
+type Chain interface {
+	Bootstrap()
+	AddBlock(*block.Block) error
+	Rollback(uint64) error
+	Clear() error
+
+	GetCurrentHeight() uint64
+	GetCurrentBlock() (*block.Block, error)
+	GetCurrentHeader() (*block.Header, error)
+	GetBlockByHeight(h uint64) (*block.Block, error)
+	GetBlockByHash(h types.Hash) (*block.Block, error)
+	GetHeaderByHeight(h uint64) (*block.Header, error)
+	GetHeaderByHash(h types.Hash) (*block.Header, error)
+	HasBlockHash(h types.Hash) bool
+	HasBlockHeight(h uint64) bool
+}
+
 type Blockchain struct {
 	logger log.Logger
 
@@ -35,12 +52,10 @@ func (bc *Blockchain) SetContract(c contract.Contract) {
 }
 
 func (bc *Blockchain) Bootstrap() {
-	if bc.blockStorer == nil {
-		panic("Storer is nil")
-	}
+	_ = bc.logger.Log("msg", "start blockchain bootstrap")
 
-	if bc.blockProcessor == nil {
-		panic("Processor is nil")
+	if bc.blockStorer == nil || bc.blockProcessor == nil {
+		panic("storer or processor is not initialized")
 	}
 
 	//if bc.contract == nil {
@@ -51,15 +66,22 @@ func (bc *Blockchain) Bootstrap() {
 		panic(err)
 	}
 
-	height := bc.CurrentHeight()
+	height := bc.GetCurrentHeight()
+	_ = bc.logger.Log("msg", "storage loaded", "height", height)
 
 	if height == 0 {
+		_ = bc.logger.Log("msg", "chain is empty, creating genesis block")
+
 		if err := bc.AddBlock(block.NewGenesisBlock()); err != nil {
 			panic(err)
 		}
 
+		_ = bc.logger.Log("msg", "finished blockchain bootstrap", "final_height", bc.GetCurrentHeight())
+
 		return
 	}
+
+	_ = bc.logger.Log("msg", "verifying existing blocks", "count", height+1)
 
 	for h := uint64(0); h <= height; h++ {
 		b, err := bc.GetBlockByHeight(h)
@@ -75,6 +97,9 @@ func (bc *Blockchain) Bootstrap() {
 		hash, _ := b.Hash()
 		_ = bc.logger.Log("msg", "verified block", "height", height, "hash", hash.String())
 	}
+
+	_ = bc.logger.Log("msg", "finished blockchain bootstrap", "final_height", bc.GetCurrentHeight())
+
 }
 
 func (bc *Blockchain) AddBlock(b *block.Block) error {
@@ -102,7 +127,7 @@ func (bc *Blockchain) AddBlock(b *block.Block) error {
 }
 
 func (bc *Blockchain) Rollback(from uint64) error {
-	ch := bc.CurrentHeight()
+	ch := bc.GetCurrentHeight()
 
 	if ch < from {
 		return nil
@@ -136,16 +161,16 @@ func (bc *Blockchain) Clear() error {
 	return nil
 }
 
-func (bc *Blockchain) CurrentHeight() uint64 {
+func (bc *Blockchain) GetCurrentHeight() uint64 {
 	return bc.blockStorer.CurrentHeight()
 }
 
-func (bc *Blockchain) CurrentBlock() (*block.Block, error) {
-	return bc.GetBlockByHeight(bc.CurrentHeight())
+func (bc *Blockchain) GetCurrentBlock() (*block.Block, error) {
+	return bc.blockStorer.CurrentBlock()
 }
 
-func (bc *Blockchain) CurrentHeader() (*block.Header, error) {
-	return bc.GetHeaderByHeight(bc.CurrentHeight())
+func (bc *Blockchain) GetCurrentHeader() (*block.Header, error) {
+	return bc.blockStorer.CurrentHeader()
 }
 
 func (bc *Blockchain) GetBlockByHeight(h uint64) (*block.Block, error) {

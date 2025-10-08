@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"strings"
@@ -34,6 +35,26 @@ func (a Address) ShortString(l int) string {
 	return "0x" + as[:l]
 }
 
+func (a Address) Equal(other Address) bool {
+	return bytes.Equal(a[:], other[:])
+}
+
+func (a Address) Gt(other Address) bool {
+	return bytes.Compare(a[:], other[:]) > 0
+}
+
+func (a Address) Gte(other Address) bool {
+	return bytes.Compare(a[:], other[:]) >= 0
+}
+
+func (a Address) Lt(other Address) bool {
+	return bytes.Compare(a[:], other[:]) < 0
+}
+
+func (a Address) Lte(other Address) bool {
+	return bytes.Compare(a[:], other[:]) <= 0
+}
+
 func AddressFromBytes(b []byte) (Address, error) {
 	if len(b) != AddressLength {
 		return Address{}, fmt.Errorf("given bytes with address-length %d should be 20 bytes", len(b))
@@ -49,7 +70,7 @@ func AddressFromBytes(b []byte) (Address, error) {
 func AddressFromHexString(s string) (Address, error) {
 	s = strings.TrimPrefix(s, "0x")
 
-	if len(s) != HashLength*2 {
+	if len(s) != AddressLength*2 {
 		return Address{}, fmt.Errorf("invalid hex string length (%d), must be %d", len(s), AddressLength*2)
 	}
 

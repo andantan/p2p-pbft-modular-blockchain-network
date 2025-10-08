@@ -26,12 +26,12 @@ func TestBlockStorage_StoreAndGetBlock(t *testing.T) {
 
 	b1Hash, _ := b1.Hash()
 	b1ReadHash, _ := b1Read.Hash()
-	assert.True(t, b1Hash.Eq(b1ReadHash))
+	assert.True(t, b1Hash.Equal(b1ReadHash))
 
 	b1ReadByHash, err := bs.GetBlockByHash(b1Hash)
 	assert.NoError(t, err)
 	b1ReadByHashHash, _ := b1ReadByHash.Hash()
-	assert.True(t, b1Hash.Eq(b1ReadByHashHash))
+	assert.True(t, b1Hash.Equal(b1ReadByHashHash))
 }
 
 func TestBlockStorer_LoadStorage(t *testing.T) {

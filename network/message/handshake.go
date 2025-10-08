@@ -56,10 +56,10 @@ func (h *HandshakeMessage) Sign(privKey *crypto.PrivateKey) error {
 
 func (h *HandshakeMessage) Verify() error {
 	if h.Signature == nil {
-		return fmt.Errorf("peerIdentity has no signature to verify")
+		return fmt.Errorf("HandshakeMessage has no signature to verify")
 	}
 	if h.PublicKey == nil {
-		return fmt.Errorf("peerIdentity has no public key to verify with")
+		return fmt.Errorf("HandshakeMessage has no public key to verify with")
 	}
 
 	hash, err := h.Hash()
@@ -69,14 +69,14 @@ func (h *HandshakeMessage) Verify() error {
 	}
 
 	if !h.Signature.Verify(h.PublicKey, hash.Bytes()) {
-		return fmt.Errorf("invalid peerIdentity signature")
+		return fmt.Errorf("invalid HandshakeMessage signature")
 	}
 
 	return nil
 }
 
 func (h *HandshakeMessage) ToProto() (proto.Message, error) {
-	return &pb.Handshake{
+	return &pb.HandshakeMessage{
 		PublicKey: h.PublicKey.Bytes(),
 		NetAddr:   h.NetAddr,
 		Signature: h.Signature.Bytes(),
@@ -84,9 +84,9 @@ func (h *HandshakeMessage) ToProto() (proto.Message, error) {
 }
 
 func (h *HandshakeMessage) FromProto(msg proto.Message) error {
-	p, ok := msg.(*pb.Handshake)
+	p, ok := msg.(*pb.HandshakeMessage)
 	if !ok {
-		return errors.New("invalid proto message type for PeerIdentity")
+		return errors.New("invalid proto message type for HandshakeMessage")
 	}
 
 	var (
@@ -111,5 +111,5 @@ func (h *HandshakeMessage) FromProto(msg proto.Message) error {
 }
 
 func (h *HandshakeMessage) EmptyProto() proto.Message {
-	return &pb.Handshake{}
+	return &pb.HandshakeMessage{}
 }
