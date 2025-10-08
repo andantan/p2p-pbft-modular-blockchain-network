@@ -31,6 +31,17 @@ func (s *AtomicSet[K]) PutIfNotExist(k K) bool {
 	return true
 }
 
+func (s *AtomicSet[K]) Reset(ks []K) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	s.m = make(map[K]struct{})
+
+	for _, k := range ks {
+		s.m[k] = struct{}{}
+	}
+}
+
 func (s *AtomicSet[K]) Contains(k K) bool {
 	s.lock.RLock()
 	defer s.lock.RUnlock()

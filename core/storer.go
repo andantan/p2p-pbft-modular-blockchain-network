@@ -16,6 +16,8 @@ import (
 
 type Storer interface {
 	CurrentHeight() uint64
+	CurrentBlock() (*block.Block, error)
+	CurrentHeader() (*block.Header, error)
 
 	LoadStorage() error
 	ClearStorage() error
@@ -63,6 +65,14 @@ func (bs *BlockStorage) CurrentHeight() uint64 {
 	}
 
 	return c - 1
+}
+
+func (bs *BlockStorage) CurrentBlock() (*block.Block, error) {
+	return bs.GetBlockByHeight(bs.CurrentHeight())
+}
+
+func (bs *BlockStorage) CurrentHeader() (*block.Header, error) {
+	return bs.GetHeaderByHeight(bs.CurrentHeight())
 }
 
 func (bs *BlockStorage) LoadStorage() error {

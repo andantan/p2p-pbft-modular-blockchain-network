@@ -53,15 +53,6 @@ func (tx *Transaction) Hash() (types.Hash, error) {
 	return tx.hash, nil
 }
 
-func (tx *Transaction) dataHash() types.Hash {
-	buf := new(bytes.Buffer)
-
-	_ = binary.Write(buf, binary.LittleEndian, tx.Data)
-	_ = binary.Write(buf, binary.LittleEndian, tx.Nonce)
-
-	return sha256.Sum256(buf.Bytes())
-}
-
 func (tx *Transaction) Sign(privKey *crypto.PrivateKey) error {
 	hash := tx.dataHash()
 
@@ -135,12 +126,21 @@ func (tx *Transaction) EmptyProto() proto.Message {
 	return &pb.Transaction{}
 }
 
-func (tx *Transaction) SetFirstSeen() {
-	tx.firstSeen = time.Now().UnixNano()
+func (tx *Transaction) FirstSeen() int64 {
+	if tx.firstSeen == 0 {
+		tx.firstSeen = time.Now().UnixNano()
+	}
+
+	return tx.firstSeen
 }
 
-func (tx *Transaction) FirstSeen() int64 {
-	return tx.firstSeen
+func (tx *Transaction) dataHash() types.Hash {
+	buf := new(bytes.Buffer)
+
+	_ = binary.Write(buf, binary.LittleEndian, tx.Data)
+	_ = binary.Write(buf, binary.LittleEndian, tx.Nonce)
+
+	return sha256.Sum256(buf.Bytes())
 }
 
 func TransactionsToProto(txx []*Transaction) ([]*pb.Transaction, error) {

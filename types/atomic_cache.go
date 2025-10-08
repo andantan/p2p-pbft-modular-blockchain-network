@@ -17,7 +17,7 @@ func NewAtomicCache[K comparable, V any]() *AtomicCache[K, V] {
 	}
 }
 
-func (c *AtomicCache[K, V]) Add(k K, v V) {
+func (c *AtomicCache[K, V]) Put(k K, v V) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -102,10 +102,6 @@ func (c *AtomicCache[K, V]) Clear() {
 
 	c.lookup = make(map[K]V)
 	c.ordered.Clear()
-}
-
-func (c *AtomicCache[K, V]) GetLookup() map[K]V {
-	return c.lookup
 }
 
 func (c *AtomicCache[K, V]) Values() []V {

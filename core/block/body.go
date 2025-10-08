@@ -24,7 +24,42 @@ func NewBody(txx []*Transaction) *Body {
 	}
 }
 
-func (b *Body) Weight() uint64 {
+func (b *Body) ToProto() (proto.Message, error) {
+	txxProto, err := TransactionsToProto(b.Transactions)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.Body{
+		Transactions: txxProto,
+	}, nil
+}
+
+func (b *Body) FromProto(msg proto.Message) error {
+	p, ok := msg.(*pb.Body)
+	if !ok {
+		return fmt.Errorf("invalid proto message type for Body")
+	}
+
+	var (
+		err error
+		txx []*Transaction
+	)
+
+	if txx, err = TransactionsFromProto(p.Transactions); err != nil {
+		return err
+	}
+
+	b.Transactions = txx
+	return nil
+}
+
+func (b *Body) EmptyProto() proto.Message {
+	return &pb.Body{}
+}
+
+func (b *Body) GetWeight() uint64 {
 	return uint64(len(b.Transactions))
 }
 
@@ -71,39 +106,4 @@ func (b *Body) CalculateMerkleRoot() (types.Hash, error) {
 	}
 
 	return hashes[0], nil
-}
-
-func (b *Body) ToProto() (proto.Message, error) {
-	txxProto, err := TransactionsToProto(b.Transactions)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &pb.Body{
-		Transactions: txxProto,
-	}, nil
-}
-
-func (b *Body) FromProto(msg proto.Message) error {
-	p, ok := msg.(*pb.Body)
-	if !ok {
-		return fmt.Errorf("invalid proto message type for Body")
-	}
-
-	var (
-		err error
-		txx []*Transaction
-	)
-
-	if txx, err = TransactionsFromProto(p.Transactions); err != nil {
-		return err
-	}
-
-	b.Transactions = txx
-	return nil
-}
-
-func (b *Body) EmptyProto() proto.Message {
-	return &pb.Body{}
 }

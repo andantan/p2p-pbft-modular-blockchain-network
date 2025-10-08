@@ -51,7 +51,7 @@ func NewBlockFromPrevHeader(prevHeader *Header, newBody *Body) (*Block, error) {
 	}
 
 	ht := prevHeader.Height + 1
-	wt := newBody.Weight()
+	wt := newBody.GetWeight()
 	s := types.ZeroHash
 	n := util.RandomUint64()
 
@@ -211,12 +211,4 @@ func (b *Block) FromProto(msg proto.Message) error {
 
 func (b *Block) EmptyProto() proto.Message {
 	return &pb.Block{}
-}
-
-func (b *Block) GetHeight() uint64 {
-	return b.Header.Height
-}
-
-func (b *Block) GetWeight() uint64 {
-	return b.Header.Weight
 }

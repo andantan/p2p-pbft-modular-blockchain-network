@@ -31,7 +31,7 @@ func NewBlockProcessor(chain *Blockchain) *BlockProcessor {
 }
 
 func (p *BlockProcessor) ProcessBlock(b *block.Block) error {
-	height := b.GetHeight()
+	height := b.Header.Height
 
 	if height == 0 {
 		return b.Verify()
@@ -41,7 +41,7 @@ func (p *BlockProcessor) ProcessBlock(b *block.Block) error {
 		return ErrBlockKnown
 	}
 
-	if p.chain.CurrentHeight()+1 != height {
+	if p.chain.GetCurrentHeight()+1 != height {
 		return ErrFutureBlock
 	}
 
@@ -59,7 +59,7 @@ func (p *BlockProcessor) ProcessBlock(b *block.Block) error {
 		return err
 	}
 
-	if !prevBlockHash.Eq(b.Header.PrevBlockHash) {
+	if !prevBlockHash.Equal(b.Header.PrevBlockHash) {
 		return ErrUnknownParent
 	}
 

@@ -128,6 +128,8 @@ func (n *TCPNode) acceptLoop() {
 }
 
 func (n *TCPNode) handshakeAndValidate(conn net.Conn) {
+	_ = n.logger.Log("msg", "start handshake", "net-addr", conn.RemoteAddr())
+
 	var (
 		err      error
 		ourId    = message.NewHandshakeMessage(&n.pubKey, n.listenAddr)

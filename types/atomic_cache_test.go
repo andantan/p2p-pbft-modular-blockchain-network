@@ -10,17 +10,17 @@ import (
 func TestCache_BasicCRUD(t *testing.T) {
 	c := NewAtomicCache[string, int]()
 
-	// Add & Count
-	c.Add("apple", 10)
-	c.Add("banana", 20)
+	// Put & Count
+	c.Put("apple", 10)
+	c.Put("banana", 20)
 	assert.Equal(t, 2, c.Count())
-	c.Add("apple", 100) // 중복 추가는 무시되어야 함
+	c.Put("apple", 100)
 	assert.Equal(t, 2, c.Count())
 
 	// Get
 	val, ok := c.Get("apple")
 	assert.True(t, ok)
-	assert.Equal(t, 10, val, "중복 추가 시 값이 변경되지 않아야 합니다.")
+	assert.Equal(t, 10, val)
 
 	// Contains
 	assert.True(t, c.Contains("banana"))
@@ -34,10 +34,10 @@ func TestCache_BasicCRUD(t *testing.T) {
 
 func TestCache_Prune(t *testing.T) {
 	c := NewAtomicCache[string, int]()
-	c.Add("a", 1)
-	c.Add("b", 2)
-	c.Add("c", 3)
-	c.Add("d", 4)
+	c.Put("a", 1)
+	c.Put("b", 2)
+	c.Put("c", 3)
+	c.Put("d", 4)
 
 	c.Prune([]string{"b", "d", "e"})
 
@@ -50,17 +50,17 @@ func TestCache_Prune(t *testing.T) {
 
 func TestCache_First(t *testing.T) {
 	c := NewAtomicCache[string, string]()
-	c.Add("second", "B")
-	c.Add("first", "A")
+	c.Put("second", "B")
+	c.Put("first", "A")
 
 	firstKey, err := c.First()
 	assert.NoError(t, err)
-	assert.Equal(t, "second", firstKey, "가장 먼저 추가된 키는 'second'여야 합니다.")
+	assert.Equal(t, "second", firstKey)
 }
 
 func TestCache_Clear(t *testing.T) {
 	c := NewAtomicCache[string, int]()
-	c.Add("a", 1)
+	c.Put("a", 1)
 	c.Clear()
 	assert.Equal(t, 0, c.Count())
 	assert.False(t, c.Contains("a"))
@@ -68,9 +68,9 @@ func TestCache_Clear(t *testing.T) {
 
 func TestCache_ValuesAndIterators(t *testing.T) {
 	c := NewAtomicCache[string, int]()
-	c.Add("a", 1)
-	c.Add("b", 2)
-	c.Add("c", 3)
+	c.Put("a", 1)
+	c.Put("b", 2)
+	c.Put("c", 3)
 
 	// Values
 	values := c.Values()
@@ -100,7 +100,7 @@ func TestCache_RaceCondition(t *testing.T) {
 			defer wg.Done()
 			key := "key_" + strconv.Itoa(i)
 
-			c.Add(key, i)
+			c.Put(key, i)
 			_, _ = c.Get(key)
 			_ = c.Contains(key)
 			c.Remove(key)

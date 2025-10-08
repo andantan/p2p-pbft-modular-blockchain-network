@@ -10,7 +10,7 @@ import (
 func TestSet_BasicOperations(t *testing.T) {
 	s := NewAtomicSet[string]()
 
-	// Put & Len
+	// Put & GetWeight
 	s.Put("apple")
 	s.Put("banana")
 	assert.Equal(t, 2, s.Len())

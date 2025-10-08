@@ -40,8 +40,8 @@ func (h Hash) ShortString(l int) string {
 	return "0x" + hs[:l]
 }
 
-func (h Hash) Eq(o Hash) bool {
-	return h == o
+func (h Hash) Equal(other Hash) bool {
+	return bytes.Equal(h[:], other[:])
 }
 
 func (h Hash) Gt(other Hash) bool {

@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package message;
+option go_package = "github.com/andantan/p2p-pbft-modular-blockchain-network/proto/network/message";
+
+import "proto/core/block/block.proto";
+
+message PbftPrePrepareMessage {
+  uint64 view = 1;
+  uint64 sequence = 2;
+  block.Block block = 3;
+  bytes public_key = 4;
+  bytes signature = 5;
+}
+
+message PbftPrepareMessage {
+  uint64 view = 1;
+  uint64 sequence = 2;
+  bytes block_hash = 3;
+  bytes public_key = 4;
+  bytes signature = 5;
+}
+
+message PbftCommitMessage {
+  uint64 view = 1;
+  uint64 sequence = 2;
+  bytes block_hash = 3;
+  bytes public_key = 4;
+  bytes signature = 5;
+}
