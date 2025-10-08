@@ -1,9 +1,8 @@
-package network
+package pbft
 
 import (
 	"github.com/andantan/p2p-pbft-modular-blockchain-network/core"
 	"github.com/andantan/p2p-pbft-modular-blockchain-network/core/block"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/network/message"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -34,7 +33,7 @@ func TestPbftProposer_ProposeBlock(t *testing.T) {
 	msg, err := proposer.ProposeBlock(testBlock)
 	assert.NoError(t, err)
 
-	prePrepareMsg, ok := msg.(*message.PbftPrePrepareMessage)
+	prePrepareMsg, ok := msg.(*PbftPrePrepareMessage)
 	assert.True(t, ok)
 
 	assert.Equal(t, uint64(10), prePrepareMsg.Sequence)
