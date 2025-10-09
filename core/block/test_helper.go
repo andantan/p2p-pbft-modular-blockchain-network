@@ -1,6 +1,9 @@
 package block
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/binary"
 	"github.com/andantan/p2p-pbft-modular-blockchain-network/codec"
 	"github.com/andantan/p2p-pbft-modular-blockchain-network/crypto"
 	"github.com/andantan/p2p-pbft-modular-blockchain-network/util"
@@ -125,15 +128,39 @@ func UnmarshallTestBody(t *testing.T, b []byte) *Body {
 	return body
 }
 
-func GenerateRandomTestCommitVote(t *testing.T, data []byte) *CommitVote {
+func GenerateRandomTestCommitVote(t *testing.T, data []byte, view, sequence uint64) *CommitVote {
 	t.Helper()
 
-	privKey, pubKey := crypto.GenerateTestKeyPair(t)
-	sig, err := privKey.Sign(data)
-	assert.NoError(t, err)
-	assert.True(t, sig.Verify(pubKey, data))
+	buf := new(bytes.Buffer)
+	assert.NoError(t, binary.Write(buf, binary.LittleEndian, view))
+	assert.NoError(t, binary.Write(buf, binary.LittleEndian, sequence))
+	buf.Write(data)
 
-	return NewCommitVote(pubKey, sig)
+	digest := sha256.Sum256(buf.Bytes())
+
+	privKey, pubKey := crypto.GenerateTestKeyPair(t)
+	sig, err := privKey.Sign(digest[:])
+	assert.NoError(t, err)
+	assert.True(t, sig.Verify(pubKey, digest[:]))
+
+	return NewCommitVote(digest, pubKey, sig)
+}
+
+func GenerateRandomTestCommitVoteWithKey(t *testing.T, data []byte, view, sequence uint64, k *crypto.PrivateKey) *CommitVote {
+	t.Helper()
+
+	buf := new(bytes.Buffer)
+	assert.NoError(t, binary.Write(buf, binary.LittleEndian, view))
+	assert.NoError(t, binary.Write(buf, binary.LittleEndian, sequence))
+	buf.Write(data)
+
+	digest := sha256.Sum256(buf.Bytes())
+
+	sig, err := k.Sign(digest[:])
+	assert.NoError(t, err)
+	assert.True(t, sig.Verify(k.PublicKey(), digest[:]))
+
+	return NewCommitVote(digest, k.PublicKey(), sig)
 }
 
 func MarshallTestCommitVote(t *testing.T, tail *CommitVote) []byte {
@@ -153,12 +180,12 @@ func UnMarshallTestCommitVote(t *testing.T, b []byte) *CommitVote {
 	return d
 }
 
-func GenerateRandomTestTail(t *testing.T, data []byte, n int) *Tail {
+func GenerateRandomTestTail(t *testing.T, data []byte, n int, view, sequence uint64) *Tail {
 	t.Helper()
 
 	cvs := make([]*CommitVote, n)
 	for i := 0; i < n; i++ {
-		cvs[i] = GenerateRandomTestCommitVote(t, data)
+		cvs[i] = GenerateRandomTestCommitVote(t, data, view, sequence)
 	}
 
 	return NewTail(cvs)

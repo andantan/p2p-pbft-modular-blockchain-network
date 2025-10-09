@@ -1,30 +1,39 @@
 package block
 
 import (
+	"errors"
 	"fmt"
 	"github.com/andantan/p2p-pbft-modular-blockchain-network/crypto"
 	pb "github.com/andantan/p2p-pbft-modular-blockchain-network/proto/core/block"
+	"github.com/andantan/p2p-pbft-modular-blockchain-network/types"
 	"google.golang.org/protobuf/proto"
 )
 
 type CommitVote struct {
+	Digest    types.Hash
 	PublicKey *crypto.PublicKey
 	Signature *crypto.Signature
 }
 
-func NewCommitVote(key *crypto.PublicKey, sig *crypto.Signature) *CommitVote {
+func NewCommitVote(digest types.Hash, key *crypto.PublicKey, sig *crypto.Signature) *CommitVote {
 	return &CommitVote{
+		Digest:    digest,
 		PublicKey: key,
 		Signature: sig,
 	}
 }
 
 func (cv *CommitVote) ToProto() (proto.Message, error) {
+	if cv.Digest.IsZero() {
+		return nil, errors.New("nil commit vote digest")
+	}
+
 	if cv.PublicKey == nil || cv.Signature == nil {
 		return nil, fmt.Errorf("commit vote public key or signature is nil")
 	}
 
 	return &pb.CommitVote{
+		Digest:    cv.Digest.Bytes(),
 		PublicKey: cv.PublicKey.Bytes(),
 		Signature: cv.Signature.Bytes(),
 	}, nil
@@ -37,10 +46,15 @@ func (cv *CommitVote) FromProto(msg proto.Message) error {
 	}
 
 	var (
-		err error
-		key *crypto.PublicKey
-		sig *crypto.Signature
+		err    error
+		digest types.Hash
+		key    *crypto.PublicKey
+		sig    *crypto.Signature
 	)
+
+	if digest, err = types.HashFromBytes(p.Digest); err != nil {
+		return err
+	}
 
 	if key, err = crypto.PublicKeyFromBytes(p.PublicKey); err != nil {
 		return err
@@ -50,6 +64,7 @@ func (cv *CommitVote) FromProto(msg proto.Message) error {
 		return err
 	}
 
+	cv.Digest = digest
 	cv.PublicKey = key
 	cv.Signature = sig
 

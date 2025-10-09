@@ -64,59 +64,51 @@ func TestBlock_Seal(t *testing.T) {
 
 	t.Run("success and already sealed", func(t *testing.T) {
 		b := GenerateRandomTestBlock(t, 1<<4)
-		ch, err := b.HashCommitVote(0, b.Header.Height)
+		bh, err := b.Hash()
 		assert.NoError(t, err)
 
 		votes := make([]*CommitVote, quorum)
 		for i := 0; i < quorum; i++ {
-			sig, err := keys[i].Sign(ch.Bytes())
-			assert.NoError(t, err)
-			votes[i] = NewCommitVote(keys[i].PublicKey(), sig)
+			votes[i] = GenerateRandomTestCommitVoteWithKey(t, bh.Bytes(), 0, b.Header.Height, keys[i])
 		}
 
-		assert.NoError(t, b.Seal(0, b.Header.Height, votes, addrs))
+		assert.NoError(t, b.Seal(votes, addrs))
 		assert.NotNil(t, b.Tail)
 		assert.Equal(t, quorum, len(b.Tail.CommitVotes))
 
-		err = b.Seal(0, b.Header.Height, votes, addrs)
+		err = b.Seal(votes, addrs)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "already set")
 	})
 
 	t.Run("error with not enough votes", func(t *testing.T) {
 		b := GenerateRandomTestBlock(t, 1<<4)
-		ch, err := b.HashCommitVote(0, b.Header.Height)
+		bh, err := b.Hash()
 		assert.NoError(t, err)
 
 		votes := make([]*CommitVote, quorum)
 		for i := 0; i < quorum; i++ {
-			sig, err := keys[i].Sign(ch.Bytes())
-			assert.NoError(t, err)
-			votes[i] = NewCommitVote(keys[i].PublicKey(), sig)
+			votes[i] = GenerateRandomTestCommitVoteWithKey(t, bh.Bytes(), 0, b.Header.Height, keys[i])
 		}
 
 		invalidVotes := votes[:quorum-1]
-		err = b.Seal(0, b.Header.Height, invalidVotes, addrs)
+		err = b.Seal(invalidVotes, addrs)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "not enough commit votes")
 	})
 
 	t.Run("error with non-validator", func(t *testing.T) {
 		b := GenerateRandomTestBlock(t, 1<<4)
-		ch, err := b.HashCommitVote(0, b.Header.Height)
+		bh, err := b.Hash()
 		assert.NoError(t, err)
 
 		votes := make([]*CommitVote, quorum)
 		for i := 0; i < quorum; i++ {
-			sig, err := keys[i].Sign(ch.Bytes())
-			assert.NoError(t, err)
-			votes[i] = NewCommitVote(keys[i].PublicKey(), sig)
+			votes[i] = GenerateRandomTestCommitVoteWithKey(t, bh.Bytes(), 0, b.Header.Height, keys[i])
 		}
 
-		rogueKey, _ := crypto.GeneratePrivateKey()
-		rogueSig, _ := rogueKey.Sign(ch.Bytes())
-		votes[0] = NewCommitVote(rogueKey.PublicKey(), rogueSig)
-		err = b.Seal(0, b.Header.Height, votes, addrs)
+		votes[0] = GenerateRandomTestCommitVote(t, bh.Bytes(), 0, b.Header.Height)
+		err = b.Seal(votes, addrs)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "non-validator")
 	})
@@ -125,14 +117,13 @@ func TestBlock_Seal(t *testing.T) {
 func TestBlock_EncodeDecode_WithTail(t *testing.T) {
 	privKey, _ := crypto.GeneratePrivateKey()
 	b := GenerateRandomTestBlock(t, 1<<4)
+	bh, err := b.Hash()
+	assert.NoError(t, err)
 	assert.NoError(t, b.Sign(privKey))
 
-	ch, err := b.HashCommitVote(0, b.Header.Height)
-	assert.NoError(t, err)
-	sig, _ := privKey.Sign(ch.Bytes())
-	vote := NewCommitVote(privKey.PublicKey(), sig)
+	vote := GenerateRandomTestCommitVoteWithKey(t, bh.Bytes(), 0, b.Header.Height, privKey)
 	validatorAddr := privKey.PublicKey().Address()
-	assert.NoError(t, b.Seal(0, b.Header.Height, []*CommitVote{vote}, []types.Address{validatorAddr}))
+	assert.NoError(t, b.Seal([]*CommitVote{vote}, []types.Address{validatorAddr}))
 	assert.NotNil(t, b.Tail)
 
 	encodedBytes, err := codec.EncodeProto(b)

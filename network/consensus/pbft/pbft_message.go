@@ -17,13 +17,14 @@ import (
 /*
 	Phase 1: Pre-Prepare-Request <PRE-PREPARE, v, n, d, m>
 
-Message = <PRE-PREPARE, View, Sequence, <PublicKey, Signature>, Block>
+Message = <PRE-PREPARE, View, Sequence, <Digest, PublicKey, Signature>, Block>
 */
 type PbftPrePrepareMessage struct {
 	View      uint64
 	Sequence  uint64
 	Block     *block.Block
 	PublicKey *crypto.PublicKey
+	Digest    types.Hash
 	Signature *crypto.Signature
 }
 
@@ -37,6 +38,10 @@ func NewPbftPrePrepareMessage(view, sequence uint64, b *block.Block, k *crypto.P
 }
 
 func (m *PbftPrePrepareMessage) Hash() (types.Hash, error) {
+	if !m.Digest.IsZero() {
+		return m.Digest, nil
+	}
+
 	if m.Block == nil {
 		return types.ZeroHash, fmt.Errorf("cannot hash identity with nil block")
 	}
@@ -63,6 +68,7 @@ func (m *PbftPrePrepareMessage) Hash() (types.Hash, error) {
 	buf.Write(m.PublicKey.Bytes())
 
 	hash := sha256.Sum256(buf.Bytes())
+	m.Digest = hash
 
 	return hash, nil
 }
@@ -119,6 +125,7 @@ func (m *PbftPrePrepareMessage) ToProto() (proto.Message, error) {
 		Sequence:  m.Sequence,
 		Block:     bp.(*pbBlock.Block),
 		PublicKey: m.PublicKey.Bytes(),
+		Digest:    m.Digest.Bytes(),
 		Signature: m.Signature.Bytes(),
 	}, nil
 }
@@ -130,13 +137,18 @@ func (m *PbftPrePrepareMessage) FromProto(msg proto.Message) error {
 	}
 
 	var (
-		err error
-		b   = new(block.Block)
-		key *crypto.PublicKey
-		sig *crypto.Signature
+		err    error
+		b      = new(block.Block)
+		digest types.Hash
+		key    *crypto.PublicKey
+		sig    *crypto.Signature
 	)
 
 	if err = b.FromProto(p.Block); err != nil {
+		return err
+	}
+
+	if digest, err = types.HashFromBytes(p.Digest); err != nil {
 		return err
 	}
 
@@ -152,6 +164,7 @@ func (m *PbftPrePrepareMessage) FromProto(msg proto.Message) error {
 	m.Sequence = p.Sequence
 	m.Block = b
 	m.PublicKey = key
+	m.Digest = digest
 	m.Signature = sig
 
 	return nil
@@ -168,12 +181,13 @@ func (m *PbftPrePrepareMessage) Address() types.Address {
 /*
 	Phase 2: Prepare-Vote <PREPARE, v, n, d, md>
 
-Message = <PREPARE, View, Sequence, <PublicKey, Signature>, Block>
+Message = <PREPARE, View, Sequence, <Digest, PublicKey, Signature>, Block>
 */
 type PbftPrepareMessage struct {
 	View      uint64
 	Sequence  uint64
 	BlockHash types.Hash
+	Digest    types.Hash
 	PublicKey *crypto.PublicKey
 	Signature *crypto.Signature
 }
@@ -187,6 +201,10 @@ func NewPbftPrepareMessage(view, sequence uint64, h types.Hash) *PbftPrepareMess
 }
 
 func (m *PbftPrepareMessage) Hash() (types.Hash, error) {
+	if !m.Digest.IsZero() {
+		return m.Digest, nil
+	}
+
 	buf := new(bytes.Buffer)
 
 	if err := binary.Write(buf, binary.LittleEndian, m.View); err != nil {
@@ -199,6 +217,7 @@ func (m *PbftPrepareMessage) Hash() (types.Hash, error) {
 	buf.Write(m.BlockHash.Bytes())
 
 	hash := sha256.Sum256(buf.Bytes())
+	m.Digest = hash
 
 	return hash, nil
 }
@@ -245,6 +264,7 @@ func (m *PbftPrepareMessage) ToProto() (proto.Message, error) {
 		View:      m.View,
 		Sequence:  m.Sequence,
 		BlockHash: m.BlockHash.Bytes(),
+		Digest:    m.Digest.Bytes(),
 		PublicKey: m.PublicKey.Bytes(),
 		Signature: m.Signature.Bytes(),
 	}, nil
@@ -257,13 +277,18 @@ func (m *PbftPrepareMessage) FromProto(msg proto.Message) error {
 	}
 
 	var (
-		err error
-		h   types.Hash
-		key *crypto.PublicKey
-		sig *crypto.Signature
+		err    error
+		h      types.Hash
+		digest types.Hash
+		key    *crypto.PublicKey
+		sig    *crypto.Signature
 	)
 
 	if h, err = types.HashFromBytes(p.BlockHash); err != nil {
+		return err
+	}
+
+	if digest, err = types.HashFromBytes(p.Digest); err != nil {
 		return err
 	}
 
@@ -278,6 +303,7 @@ func (m *PbftPrepareMessage) FromProto(msg proto.Message) error {
 	m.View = p.View
 	m.Sequence = p.Sequence
 	m.BlockHash = h
+	m.Digest = digest
 	m.PublicKey = key
 	m.Signature = sig
 
@@ -295,12 +321,13 @@ func (m *PbftPrepareMessage) Address() types.Address {
 /*
 	Phase 3: Commit-Vote <COMMIT, v, n, d, md>
 
-Message = <COMMIT, View, Sequence, <PublicKey, Signature>, Block>
+Message = <COMMIT, View, Sequence, <Digest, PublicKey, Signature>, Block>
 */
 type PbftCommitMessage struct {
 	View      uint64
 	Sequence  uint64
 	BlockHash types.Hash
+	Digest    types.Hash
 	PublicKey *crypto.PublicKey
 	Signature *crypto.Signature
 }
@@ -314,6 +341,10 @@ func NewPbftCommitMessage(view, sequence uint64, h types.Hash) *PbftCommitMessag
 }
 
 func (m *PbftCommitMessage) Hash() (types.Hash, error) {
+	if !m.Digest.IsZero() {
+		return m.Digest, nil
+	}
+
 	buf := new(bytes.Buffer)
 
 	if err := binary.Write(buf, binary.LittleEndian, m.View); err != nil {
@@ -326,6 +357,8 @@ func (m *PbftCommitMessage) Hash() (types.Hash, error) {
 	buf.Write(m.BlockHash.Bytes())
 
 	hash := sha256.Sum256(buf.Bytes())
+	m.Digest = hash
+
 	return hash, nil
 }
 
@@ -371,6 +404,7 @@ func (m *PbftCommitMessage) ToProto() (proto.Message, error) {
 		View:      m.View,
 		Sequence:  m.Sequence,
 		BlockHash: m.BlockHash.Bytes(),
+		Digest:    m.Digest.Bytes(),
 		PublicKey: m.PublicKey.Bytes(),
 		Signature: m.Signature.Bytes(),
 	}, nil
@@ -383,13 +417,18 @@ func (m *PbftCommitMessage) FromProto(msg proto.Message) error {
 	}
 
 	var (
-		err error
-		h   types.Hash
-		key *crypto.PublicKey
-		sig *crypto.Signature
+		err    error
+		h      types.Hash
+		digest types.Hash
+		key    *crypto.PublicKey
+		sig    *crypto.Signature
 	)
 
 	if h, err = types.HashFromBytes(p.BlockHash); err != nil {
+		return err
+	}
+
+	if digest, err = types.HashFromBytes(p.Digest); err != nil {
 		return err
 	}
 
@@ -404,6 +443,7 @@ func (m *PbftCommitMessage) FromProto(msg proto.Message) error {
 	m.View = p.View
 	m.Sequence = p.Sequence
 	m.BlockHash = h
+	m.Digest = digest
 	m.PublicKey = key
 	m.Signature = sig
 
@@ -421,6 +461,7 @@ func (m *PbftCommitMessage) Address() types.Address {
 type PbftViewChangeMessage struct {
 	NewView   uint64
 	Sequence  uint64
+	Digest    types.Hash
 	PublicKey *crypto.PublicKey
 	Signature *crypto.Signature
 }
@@ -433,6 +474,10 @@ func NewPbftViewChangeMessage(newView, sequence uint64) *PbftViewChangeMessage {
 }
 
 func (m *PbftViewChangeMessage) Hash() (types.Hash, error) {
+	if !m.Digest.IsZero() {
+		return m.Digest, nil
+	}
+
 	buf := new(bytes.Buffer)
 	if err := binary.Write(buf, binary.LittleEndian, m.NewView); err != nil {
 		return types.ZeroHash, err
@@ -442,6 +487,8 @@ func (m *PbftViewChangeMessage) Hash() (types.Hash, error) {
 	}
 
 	hash := sha256.Sum256(buf.Bytes())
+	m.Digest = hash
+
 	return hash, nil
 }
 
@@ -485,6 +532,7 @@ func (m *PbftViewChangeMessage) ToProto() (proto.Message, error) {
 	return &pbPbft.PbftViewChangeMessage{
 		NewView:   m.NewView,
 		Sequence:  m.Sequence,
+		Digest:    m.Digest.Bytes(),
 		PublicKey: m.PublicKey.Bytes(),
 		Signature: m.Signature.Bytes(),
 	}, nil
@@ -497,10 +545,15 @@ func (m *PbftViewChangeMessage) FromProto(msg proto.Message) error {
 	}
 
 	var (
-		err error
-		key *crypto.PublicKey
-		sig *crypto.Signature
+		err    error
+		digest types.Hash
+		key    *crypto.PublicKey
+		sig    *crypto.Signature
 	)
+
+	if digest, err = types.HashFromBytes(p.Digest); err != nil {
+		return err
+	}
 
 	if key, err = crypto.PublicKeyFromBytes(p.PublicKey); err != nil {
 		return err
@@ -512,6 +565,7 @@ func (m *PbftViewChangeMessage) FromProto(msg proto.Message) error {
 
 	m.NewView = p.NewView
 	m.Sequence = p.Sequence
+	m.Digest = digest
 	m.PublicKey = key
 	m.Signature = sig
 
@@ -531,6 +585,7 @@ type PbftNewViewMessage struct {
 	Sequence           uint64
 	ViewChangeMessages []*PbftViewChangeMessage
 	PrePrepareMessage  *PbftPrePrepareMessage
+	Digest             types.Hash
 	PublicKey          *crypto.PublicKey
 	Signature          *crypto.Signature
 }
@@ -550,6 +605,10 @@ func NewPbftNewViewMessage(
 }
 
 func (m *PbftNewViewMessage) Hash() (types.Hash, error) {
+	if !m.Digest.IsZero() {
+		return m.Digest, nil
+	}
+
 	buf := new(bytes.Buffer)
 	_ = binary.Write(buf, binary.LittleEndian, m.NewView)
 	_ = binary.Write(buf, binary.LittleEndian, m.Sequence)
@@ -569,6 +628,7 @@ func (m *PbftNewViewMessage) Hash() (types.Hash, error) {
 	}
 
 	hash := sha256.Sum256(buf.Bytes())
+	m.Digest = hash
 
 	return hash, nil
 }
@@ -629,6 +689,7 @@ func (m *PbftNewViewMessage) ToProto() (proto.Message, error) {
 		Sequence:           m.Sequence,
 		ViewChangeMessages: viewChangesProto,
 		PrePrepareMessage:  prePrepareProto.(*pbPbft.PbftPrePrepareMessage),
+		Digest:             m.Digest.Bytes(),
 		PublicKey:          m.PublicKey.Bytes(),
 		Signature:          m.Signature.Bytes(),
 	}, nil
@@ -641,10 +702,15 @@ func (m *PbftNewViewMessage) FromProto(msg proto.Message) error {
 	}
 
 	var (
-		err error
-		key *crypto.PublicKey
-		sig *crypto.Signature
+		err    error
+		digest types.Hash
+		key    *crypto.PublicKey
+		sig    *crypto.Signature
 	)
+
+	if digest, err = types.HashFromBytes(p.Digest); err != nil {
+		return err
+	}
 
 	if key, err = crypto.PublicKeyFromBytes(p.PublicKey); err != nil {
 		return err
@@ -671,6 +737,7 @@ func (m *PbftNewViewMessage) FromProto(msg proto.Message) error {
 	m.Sequence = p.Sequence
 	m.PrePrepareMessage = ppm
 	m.ViewChangeMessages = vcm
+	m.Digest = digest
 	m.PublicKey = key
 	m.Signature = sig
 

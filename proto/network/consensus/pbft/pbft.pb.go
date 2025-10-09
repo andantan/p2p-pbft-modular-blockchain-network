@@ -28,7 +28,8 @@ type PbftPrePrepareMessage struct {
 	Sequence      uint64                 `protobuf:"varint,2,opt,name=sequence,proto3" json:"sequence,omitempty"`
 	Block         *block.Block           `protobuf:"bytes,3,opt,name=block,proto3" json:"block,omitempty"`
 	PublicKey     []byte                 `protobuf:"bytes,4,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
-	Signature     []byte                 `protobuf:"bytes,5,opt,name=signature,proto3" json:"signature,omitempty"`
+	Digest        []byte                 `protobuf:"bytes,5,opt,name=digest,proto3" json:"digest,omitempty"`
+	Signature     []byte                 `protobuf:"bytes,6,opt,name=signature,proto3" json:"signature,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -91,6 +92,13 @@ func (x *PbftPrePrepareMessage) GetPublicKey() []byte {
 	return nil
 }
 
+func (x *PbftPrePrepareMessage) GetDigest() []byte {
+	if x != nil {
+		return x.Digest
+	}
+	return nil
+}
+
 func (x *PbftPrePrepareMessage) GetSignature() []byte {
 	if x != nil {
 		return x.Signature
@@ -103,8 +111,9 @@ type PbftPrepareMessage struct {
 	View          uint64                 `protobuf:"varint,1,opt,name=view,proto3" json:"view,omitempty"`
 	Sequence      uint64                 `protobuf:"varint,2,opt,name=sequence,proto3" json:"sequence,omitempty"`
 	BlockHash     []byte                 `protobuf:"bytes,3,opt,name=block_hash,json=blockHash,proto3" json:"block_hash,omitempty"`
-	PublicKey     []byte                 `protobuf:"bytes,4,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
-	Signature     []byte                 `protobuf:"bytes,5,opt,name=signature,proto3" json:"signature,omitempty"`
+	Digest        []byte                 `protobuf:"bytes,4,opt,name=digest,proto3" json:"digest,omitempty"`
+	PublicKey     []byte                 `protobuf:"bytes,5,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
+	Signature     []byte                 `protobuf:"bytes,6,opt,name=signature,proto3" json:"signature,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -160,6 +169,13 @@ func (x *PbftPrepareMessage) GetBlockHash() []byte {
 	return nil
 }
 
+func (x *PbftPrepareMessage) GetDigest() []byte {
+	if x != nil {
+		return x.Digest
+	}
+	return nil
+}
+
 func (x *PbftPrepareMessage) GetPublicKey() []byte {
 	if x != nil {
 		return x.PublicKey
@@ -179,8 +195,9 @@ type PbftCommitMessage struct {
 	View          uint64                 `protobuf:"varint,1,opt,name=view,proto3" json:"view,omitempty"`
 	Sequence      uint64                 `protobuf:"varint,2,opt,name=sequence,proto3" json:"sequence,omitempty"`
 	BlockHash     []byte                 `protobuf:"bytes,3,opt,name=block_hash,json=blockHash,proto3" json:"block_hash,omitempty"`
-	PublicKey     []byte                 `protobuf:"bytes,4,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
-	Signature     []byte                 `protobuf:"bytes,5,opt,name=signature,proto3" json:"signature,omitempty"`
+	Digest        []byte                 `protobuf:"bytes,4,opt,name=digest,proto3" json:"digest,omitempty"`
+	PublicKey     []byte                 `protobuf:"bytes,5,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
+	Signature     []byte                 `protobuf:"bytes,6,opt,name=signature,proto3" json:"signature,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -236,6 +253,13 @@ func (x *PbftCommitMessage) GetBlockHash() []byte {
 	return nil
 }
 
+func (x *PbftCommitMessage) GetDigest() []byte {
+	if x != nil {
+		return x.Digest
+	}
+	return nil
+}
+
 func (x *PbftCommitMessage) GetPublicKey() []byte {
 	if x != nil {
 		return x.PublicKey
@@ -254,8 +278,9 @@ type PbftViewChangeMessage struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	NewView       uint64                 `protobuf:"varint,1,opt,name=new_view,json=newView,proto3" json:"new_view,omitempty"`
 	Sequence      uint64                 `protobuf:"varint,2,opt,name=sequence,proto3" json:"sequence,omitempty"`
-	PublicKey     []byte                 `protobuf:"bytes,3,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
-	Signature     []byte                 `protobuf:"bytes,4,opt,name=signature,proto3" json:"signature,omitempty"`
+	Digest        []byte                 `protobuf:"bytes,3,opt,name=digest,proto3" json:"digest,omitempty"`
+	PublicKey     []byte                 `protobuf:"bytes,4,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
+	Signature     []byte                 `protobuf:"bytes,5,opt,name=signature,proto3" json:"signature,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -304,6 +329,13 @@ func (x *PbftViewChangeMessage) GetSequence() uint64 {
 	return 0
 }
 
+func (x *PbftViewChangeMessage) GetDigest() []byte {
+	if x != nil {
+		return x.Digest
+	}
+	return nil
+}
+
 func (x *PbftViewChangeMessage) GetPublicKey() []byte {
 	if x != nil {
 		return x.PublicKey
@@ -324,8 +356,9 @@ type PbftNewViewMessage struct {
 	Sequence           uint64                   `protobuf:"varint,2,opt,name=sequence,proto3" json:"sequence,omitempty"`
 	ViewChangeMessages []*PbftViewChangeMessage `protobuf:"bytes,3,rep,name=view_change_messages,json=viewChangeMessages,proto3" json:"view_change_messages,omitempty"`
 	PrePrepareMessage  *PbftPrePrepareMessage   `protobuf:"bytes,4,opt,name=pre_prepare_message,json=prePrepareMessage,proto3" json:"pre_prepare_message,omitempty"`
-	PublicKey          []byte                   `protobuf:"bytes,5,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
-	Signature          []byte                   `protobuf:"bytes,6,opt,name=signature,proto3" json:"signature,omitempty"`
+	Digest             []byte                   `protobuf:"bytes,5,opt,name=digest,proto3" json:"digest,omitempty"`
+	PublicKey          []byte                   `protobuf:"bytes,6,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
+	Signature          []byte                   `protobuf:"bytes,7,opt,name=signature,proto3" json:"signature,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -388,6 +421,13 @@ func (x *PbftNewViewMessage) GetPrePrepareMessage() *PbftPrePrepareMessage {
 	return nil
 }
 
+func (x *PbftNewViewMessage) GetDigest() []byte {
+	if x != nil {
+		return x.Digest
+	}
+	return nil
+}
+
 func (x *PbftNewViewMessage) GetPublicKey() []byte {
 	if x != nil {
 		return x.PublicKey
@@ -406,44 +446,49 @@ var File_proto_network_consensus_pbft_pbft_proto protoreflect.FileDescriptor
 
 const file_proto_network_consensus_pbft_pbft_proto_rawDesc = "" +
 	"\n" +
-	"'proto/network/consensus/pbft/pbft.proto\x12\x04pbft\x1a\x1cproto/core/block/block.proto\"\xa8\x01\n" +
+	"'proto/network/consensus/pbft/pbft.proto\x12\x04pbft\x1a\x1cproto/core/block/block.proto\"\xc0\x01\n" +
 	"\x15PbftPrePrepareMessage\x12\x12\n" +
 	"\x04view\x18\x01 \x01(\x04R\x04view\x12\x1a\n" +
 	"\bsequence\x18\x02 \x01(\x04R\bsequence\x12\"\n" +
 	"\x05block\x18\x03 \x01(\v2\f.block.BlockR\x05block\x12\x1d\n" +
 	"\n" +
-	"public_key\x18\x04 \x01(\fR\tpublicKey\x12\x1c\n" +
-	"\tsignature\x18\x05 \x01(\fR\tsignature\"\xa0\x01\n" +
+	"public_key\x18\x04 \x01(\fR\tpublicKey\x12\x16\n" +
+	"\x06digest\x18\x05 \x01(\fR\x06digest\x12\x1c\n" +
+	"\tsignature\x18\x06 \x01(\fR\tsignature\"\xb8\x01\n" +
 	"\x12PbftPrepareMessage\x12\x12\n" +
 	"\x04view\x18\x01 \x01(\x04R\x04view\x12\x1a\n" +
 	"\bsequence\x18\x02 \x01(\x04R\bsequence\x12\x1d\n" +
 	"\n" +
-	"block_hash\x18\x03 \x01(\fR\tblockHash\x12\x1d\n" +
+	"block_hash\x18\x03 \x01(\fR\tblockHash\x12\x16\n" +
+	"\x06digest\x18\x04 \x01(\fR\x06digest\x12\x1d\n" +
 	"\n" +
-	"public_key\x18\x04 \x01(\fR\tpublicKey\x12\x1c\n" +
-	"\tsignature\x18\x05 \x01(\fR\tsignature\"\x9f\x01\n" +
+	"public_key\x18\x05 \x01(\fR\tpublicKey\x12\x1c\n" +
+	"\tsignature\x18\x06 \x01(\fR\tsignature\"\xb7\x01\n" +
 	"\x11PbftCommitMessage\x12\x12\n" +
 	"\x04view\x18\x01 \x01(\x04R\x04view\x12\x1a\n" +
 	"\bsequence\x18\x02 \x01(\x04R\bsequence\x12\x1d\n" +
 	"\n" +
-	"block_hash\x18\x03 \x01(\fR\tblockHash\x12\x1d\n" +
+	"block_hash\x18\x03 \x01(\fR\tblockHash\x12\x16\n" +
+	"\x06digest\x18\x04 \x01(\fR\x06digest\x12\x1d\n" +
 	"\n" +
-	"public_key\x18\x04 \x01(\fR\tpublicKey\x12\x1c\n" +
-	"\tsignature\x18\x05 \x01(\fR\tsignature\"\x8b\x01\n" +
+	"public_key\x18\x05 \x01(\fR\tpublicKey\x12\x1c\n" +
+	"\tsignature\x18\x06 \x01(\fR\tsignature\"\xa3\x01\n" +
 	"\x15PbftViewChangeMessage\x12\x19\n" +
 	"\bnew_view\x18\x01 \x01(\x04R\anewView\x12\x1a\n" +
-	"\bsequence\x18\x02 \x01(\x04R\bsequence\x12\x1d\n" +
+	"\bsequence\x18\x02 \x01(\x04R\bsequence\x12\x16\n" +
+	"\x06digest\x18\x03 \x01(\fR\x06digest\x12\x1d\n" +
 	"\n" +
-	"public_key\x18\x03 \x01(\fR\tpublicKey\x12\x1c\n" +
-	"\tsignature\x18\x04 \x01(\fR\tsignature\"\xa4\x02\n" +
+	"public_key\x18\x04 \x01(\fR\tpublicKey\x12\x1c\n" +
+	"\tsignature\x18\x05 \x01(\fR\tsignature\"\xbc\x02\n" +
 	"\x12PbftNewViewMessage\x12\x19\n" +
 	"\bnew_view\x18\x01 \x01(\x04R\anewView\x12\x1a\n" +
 	"\bsequence\x18\x02 \x01(\x04R\bsequence\x12M\n" +
 	"\x14view_change_messages\x18\x03 \x03(\v2\x1b.pbft.PbftViewChangeMessageR\x12viewChangeMessages\x12K\n" +
-	"\x13pre_prepare_message\x18\x04 \x01(\v2\x1b.pbft.PbftPrePrepareMessageR\x11prePrepareMessage\x12\x1d\n" +
+	"\x13pre_prepare_message\x18\x04 \x01(\v2\x1b.pbft.PbftPrePrepareMessageR\x11prePrepareMessage\x12\x16\n" +
+	"\x06digest\x18\x05 \x01(\fR\x06digest\x12\x1d\n" +
 	"\n" +
-	"public_key\x18\x05 \x01(\fR\tpublicKey\x12\x1c\n" +
-	"\tsignature\x18\x06 \x01(\fR\tsignatureBVZTgithub.com/andantan/p2p-pbft-modular-blockchain-network/proto/network/consensus/pbftb\x06proto3"
+	"public_key\x18\x06 \x01(\fR\tpublicKey\x12\x1c\n" +
+	"\tsignature\x18\a \x01(\fR\tsignatureBVZTgithub.com/andantan/p2p-pbft-modular-blockchain-network/proto/network/consensus/pbftb\x06proto3"
 
 var (
 	file_proto_network_consensus_pbft_pbft_proto_rawDescOnce sync.Once

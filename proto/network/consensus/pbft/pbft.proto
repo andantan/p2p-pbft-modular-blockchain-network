@@ -12,23 +12,26 @@ message PbftPrePrepareMessage {
   uint64 sequence = 2;
   block.Block block = 3;
   bytes public_key = 4;
-  bytes signature = 5;
+  bytes digest = 5;
+  bytes signature = 6;
 }
 
 message PbftPrepareMessage {
   uint64 view = 1;
   uint64 sequence = 2;
   bytes block_hash = 3;
-  bytes public_key = 4;
-  bytes signature = 5;
+  bytes digest = 4;
+  bytes public_key = 5;
+  bytes signature = 6;
 }
 
 message PbftCommitMessage {
   uint64 view = 1;
   uint64 sequence = 2;
   bytes block_hash = 3;
-  bytes public_key = 4;
-  bytes signature = 5;
+  bytes digest = 4;
+  bytes public_key = 5;
+  bytes signature = 6;
 }
 
 // --- PBFT View Change Messages ---
@@ -36,8 +39,9 @@ message PbftCommitMessage {
 message PbftViewChangeMessage {
   uint64 new_view = 1;
   uint64 sequence = 2;
-  bytes public_key = 3;
-  bytes signature = 4;
+  bytes digest = 3;
+  bytes public_key = 4;
+  bytes signature = 5;
 }
 
 message PbftNewViewMessage {
@@ -45,6 +49,7 @@ message PbftNewViewMessage {
   uint64 sequence = 2;
   repeated PbftViewChangeMessage view_change_messages = 3;
   PbftPrePrepareMessage pre_prepare_message = 4;
-  bytes public_key = 5;
-  bytes signature = 6;
+  bytes digest = 5;
+  bytes public_key = 6;
+  bytes signature = 7;
 }
