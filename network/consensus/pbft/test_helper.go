@@ -2,9 +2,12 @@ package pbft
 
 import (
 	"bytes"
+	"github.com/andantan/p2p-pbft-modular-blockchain-network/core"
 	"github.com/andantan/p2p-pbft-modular-blockchain-network/core/block"
 	"github.com/andantan/p2p-pbft-modular-blockchain-network/crypto"
+	"github.com/andantan/p2p-pbft-modular-blockchain-network/network"
 	"github.com/andantan/p2p-pbft-modular-blockchain-network/types"
+	"github.com/andantan/p2p-pbft-modular-blockchain-network/util"
 	"github.com/stretchr/testify/assert"
 	"sort"
 	"testing"
@@ -143,7 +146,7 @@ func GenerateTestPbftValidator(t *testing.T, valN int) (*PbftValidator, []*crypt
 func GetLeaderFromTestValidators(t *testing.T, vs []*crypto.PrivateKey, view, sequence uint64) *crypto.PrivateKey {
 	t.Helper()
 
-	addrs := make([]types.Address, 4)
+	addrs := make([]types.Address, len(vs))
 	for i, k := range vs {
 		addrs[i] = k.PublicKey().Address()
 	}
@@ -176,4 +179,34 @@ func GenerateTestPbftProposer(t *testing.T) *PbftProposer {
 	assert.NotNil(t, p)
 
 	return p
+}
+
+func GenerateTestPbftConsensusEngine(t *testing.T, valN, bcH int) (*core.Blockchain, []*crypto.PrivateKey, *PbftConsensusEngine, chan *block.Block, chan network.ConsensusMessage) {
+	t.Helper()
+
+	keys := make([]*crypto.PrivateKey, valN)
+	addrs := make([]types.Address, valN)
+	for i := 0; i < valN; i++ {
+		keys[i], _ = crypto.GeneratePrivateKey()
+		addrs[i] = keys[i].PublicKey().Address()
+	}
+
+	finalizedBlockCh := make(chan *block.Block, 1)
+	externalMsgCh := make(chan network.ConsensusMessage, 100)
+	bc, p := core.GenerateTestBlockchainAndProcessor(t)
+
+	core.AddTestBlocksToBlockchain(t, bc, uint64(bcH))
+	signer := util.RandomUint64WithMaximun(valN)
+	e := NewPbftConsensusEngine(keys[signer], p, addrs, finalizedBlockCh, externalMsgCh)
+
+	assert.NotNil(t, e)
+	assert.True(t, e.state.Eq(Initialized))
+	assert.True(t, e.view.Eq(uint64(0)))
+	assert.Equal(t, e.quorum, 2*len(addrs)/3+1)
+	assert.Equal(t, e.sequence, uint64(0))
+	assert.Nil(t, e.block)
+	assert.NotNil(t, e.closeCh)
+	assert.NotNil(t, e.internalMsgCh)
+
+	return bc, keys, e, finalizedBlockCh, externalMsgCh
 }

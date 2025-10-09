@@ -55,7 +55,7 @@ func GenerateRandomTestHeader(t *testing.T) *Header {
 func GenerateRandomTestHeaderWithBody(t *testing.T, b *Body) *Header {
 	t.Helper()
 
-	m, err := b.CalculateMerkleRoot()
+	m, err := b.Hash()
 	assert.NoError(t, err)
 
 	return &Header{
@@ -70,7 +70,7 @@ func GenerateRandomTestHeaderWithBody(t *testing.T, b *Body) *Header {
 func GenerateRandomTestHeaderWithBodyAndHeight(t *testing.T, b *Body, h uint64) *Header {
 	t.Helper()
 
-	m, err := b.CalculateMerkleRoot()
+	m, err := b.Hash()
 	assert.NoError(t, err)
 
 	return &Header{
@@ -125,6 +125,62 @@ func UnmarshallTestBody(t *testing.T, b []byte) *Body {
 	return body
 }
 
+func GenerateRandomTestCommitVote(t *testing.T, data []byte) *CommitVote {
+	t.Helper()
+
+	privKey, pubKey := crypto.GenerateTestKeyPair(t)
+	sig, err := privKey.Sign(data)
+	assert.NoError(t, err)
+	assert.True(t, sig.Verify(pubKey, data))
+
+	return NewCommitVote(pubKey, sig)
+}
+
+func MarshallTestCommitVote(t *testing.T, tail *CommitVote) []byte {
+	t.Helper()
+
+	b, err := codec.EncodeProto(tail)
+	assert.NoError(t, err)
+
+	return b
+}
+
+func UnMarshallTestCommitVote(t *testing.T, b []byte) *CommitVote {
+	t.Helper()
+
+	d := new(CommitVote)
+	assert.NoError(t, codec.DecodeProto(b, d))
+	return d
+}
+
+func GenerateRandomTestTail(t *testing.T, data []byte, n int) *Tail {
+	t.Helper()
+
+	cvs := make([]*CommitVote, n)
+	for i := 0; i < n; i++ {
+		cvs[i] = GenerateRandomTestCommitVote(t, data)
+	}
+
+	return NewTail(cvs)
+}
+
+func MarshallTestTail(t *testing.T, tail *Tail) []byte {
+	t.Helper()
+
+	b, err := codec.EncodeProto(tail)
+	assert.NoError(t, err)
+
+	return b
+}
+
+func UnMarshallTestTail(t *testing.T, b []byte) *Tail {
+	t.Helper()
+
+	d := new(Tail)
+	assert.NoError(t, codec.DecodeProto(b, d))
+	return d
+}
+
 func GenerateRandomTestBlock(t *testing.T, txCount int) *Block {
 	t.Helper()
 
@@ -170,6 +226,19 @@ func GenerateRandomTestBlockWithPrevHeader(t *testing.T, h *Header, txCount int)
 
 	privKey, _ := crypto.GenerateTestKeyPair(t)
 	assert.NoError(t, b.Sign(privKey))
+	assert.NotNil(t, b.Signature)
+	assert.NoError(t, b.Verify())
+
+	return b
+}
+
+func GenerateRandomTestBlockWithPrevHeaderAndKey(t *testing.T, h *Header, txCount int, k *crypto.PrivateKey) *Block {
+	t.Helper()
+
+	bd := GenerateRandomTestBody(t, txCount)
+	b, err := NewBlockFromPrevHeader(h, bd)
+	assert.NoError(t, err)
+	assert.NoError(t, b.Sign(k))
 	assert.NotNil(t, b.Signature)
 	assert.NoError(t, b.Verify())
 

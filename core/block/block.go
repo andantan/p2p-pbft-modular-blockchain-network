@@ -1,6 +1,9 @@
 package block
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"github.com/andantan/p2p-pbft-modular-blockchain-network/crypto"
@@ -15,6 +18,7 @@ type Block struct {
 
 	Header *Header
 	Body   *Body
+	Tail   *Tail
 
 	Proposer  *crypto.PublicKey
 	Signature *crypto.Signature
@@ -38,7 +42,7 @@ func NewBlock(header *Header, body *Body) (*Block, error) {
 }
 
 func NewBlockFromPrevHeader(prevHeader *Header, newBody *Body) (*Block, error) {
-	m, err := newBody.CalculateMerkleRoot()
+	m, err := newBody.Hash()
 
 	if err != nil {
 		return nil, err
@@ -148,6 +152,7 @@ func (b *Block) ToProto() (proto.Message, error) {
 		err         error
 		headerProto proto.Message
 		bodyProto   proto.Message
+		tailproto   proto.Message
 	)
 
 	if headerProto, err = b.Header.ToProto(); err != nil {
@@ -158,10 +163,19 @@ func (b *Block) ToProto() (proto.Message, error) {
 		return nil, err
 	}
 
+	var tp *pb.Tail
+	if b.Tail != nil {
+		if tailproto, err = b.Tail.ToProto(); err != nil {
+			return nil, err
+		}
+		tp = tailproto.(*pb.Tail)
+	}
+
 	return &pb.Block{
 		BlockHash: b.blockHash.Bytes(),
 		Header:    headerProto.(*pb.Header),
 		Body:      bodyProto.(*pb.Body),
+		Tail:      tp,
 		Proposer:  b.Proposer.Bytes(),
 		Signature: b.Signature.Bytes(),
 	}, nil
@@ -181,6 +195,13 @@ func (b *Block) FromProto(msg proto.Message) error {
 	b.Body = &Body{}
 	if err := b.Body.FromProto(p.Body); err != nil {
 		return err
+	}
+
+	if p.Tail != nil {
+		b.Tail = &Tail{}
+		if err := b.Tail.FromProto(p.Tail); err != nil {
+			return err
+		}
 	}
 
 	var (
@@ -211,4 +232,71 @@ func (b *Block) FromProto(msg proto.Message) error {
 
 func (b *Block) EmptyProto() proto.Message {
 	return &pb.Block{}
+}
+
+func (b *Block) Seal(view, sequence uint64, votes []*CommitVote, set []types.Address) error {
+	if b.Tail != nil {
+		return fmt.Errorf("block tail is already set")
+	}
+
+	quorum := (2 * len(set) / 3) + 1
+	if len(votes) < quorum {
+		return fmt.Errorf("not enough commit votes in tail")
+	}
+
+	for _, v := range votes {
+		found := false
+		for _, validatorAddr := range set {
+			if validatorAddr.Equal(v.PublicKey.Address()) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("tail contains vote from non-validator: %s", v.PublicKey.Address())
+		}
+
+		if err := b.VerifyCommitVote(view, sequence, v.PublicKey, v.Signature); err != nil {
+			return err
+		}
+	}
+
+	b.Tail = NewTail(votes)
+
+	return nil
+}
+
+func (b *Block) VerifyCommitVote(view, sequence uint64, key *crypto.PublicKey, sig *crypto.Signature) error {
+	ch, err := b.HashCommitVote(view, sequence)
+
+	if err != nil {
+		return err
+	}
+
+	if !sig.Verify(key, ch.Bytes()) {
+		return fmt.Errorf("invalid signature in CommitVote")
+	}
+
+	return nil
+}
+
+func (b *Block) HashCommitVote(view, sequence uint64) (types.Hash, error) {
+	buf := new(bytes.Buffer)
+
+	if err := binary.Write(buf, binary.LittleEndian, view); err != nil {
+		return types.ZeroHash, err
+	}
+	if err := binary.Write(buf, binary.LittleEndian, sequence); err != nil {
+		return types.ZeroHash, err
+	}
+
+	bh, err := b.Hash()
+	if err != nil {
+		return types.ZeroHash, err
+	}
+
+	buf.Write(bh.Bytes())
+
+	hash := sha256.Sum256(buf.Bytes())
+	return hash, nil
 }

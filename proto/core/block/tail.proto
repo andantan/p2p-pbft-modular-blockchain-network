@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package block;
+option go_package = "github.com/andantan/p2p-pbft-modular-blockchain-network/proto/core/block";
+
+message CommitVote {
+  bytes public_key = 1;
+  bytes signature = 2;
+}
+
+message Tail {
+  repeated CommitVote commit_votes = 1;
+}

@@ -23,15 +23,15 @@ func TestNewBody_WithNil(t *testing.T) {
 	assert.Empty(t, decodedBody.Transactions)
 	assert.Equal(t, 0, len(decodedBody.Transactions))
 
-	rootOrig, _ := originalBody.CalculateMerkleRoot()
-	rootDecode, _ := decodedBody.CalculateMerkleRoot()
+	rootOrig, _ := originalBody.Hash()
+	rootDecode, _ := decodedBody.Hash()
 	assert.True(t, rootOrig.Equal(rootDecode))
 	assert.Equal(t, len(originalBody.Transactions), len(decodedBody.Transactions))
 }
 
 func TestBody_CalculateMerkleRoot(t *testing.T) {
 	bodyWithOneTx := GenerateRandomTestBody(t, 1)
-	root1, err := bodyWithOneTx.CalculateMerkleRoot()
+	root1, err := bodyWithOneTx.Hash()
 	assert.NoError(t, err)
 	tx1Hash, _ := bodyWithOneTx.Transactions[0].Hash()
 	assert.True(t, root1.Equal(tx1Hash))
@@ -45,16 +45,16 @@ func TestBody_CalculateMerkleRoot(t *testing.T) {
 		},
 	}
 
-	root2, err := bodyWithThreeTxs.CalculateMerkleRoot()
+	root2, err := bodyWithThreeTxs.Hash()
 	assert.NoError(t, err)
-	root3, err := bodyWithReversedTxs.CalculateMerkleRoot()
+	root3, err := bodyWithReversedTxs.Hash()
 	assert.NoError(t, err)
 
 	assert.False(t, root2.IsZero())
 	assert.True(t, root2.Equal(root3))
 
 	bodyEmpty := NewBody(nil)
-	_, err = bodyEmpty.CalculateMerkleRoot()
+	_, err = bodyEmpty.Hash()
 	assert.NoError(t, err)
 }
 
@@ -66,8 +66,8 @@ func TestBody_EncodeDecode(t *testing.T) {
 	// UnMarshalling
 	decodedBody := UnmarshallTestBody(t, encodedBytes)
 
-	rootOrig, _ := originalBody.CalculateMerkleRoot()
-	rootDecode, _ := decodedBody.CalculateMerkleRoot()
+	rootOrig, _ := originalBody.Hash()
+	rootDecode, _ := decodedBody.Hash()
 	assert.True(t, rootOrig.Equal(rootDecode))
 	assert.Equal(t, len(originalBody.Transactions), len(decodedBody.Transactions))
 }
