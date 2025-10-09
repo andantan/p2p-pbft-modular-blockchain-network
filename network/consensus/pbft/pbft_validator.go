@@ -70,6 +70,10 @@ func (v *PbftValidator) ProcessConsensusMessage(msg network.ConsensusMessage) er
 	}
 }
 
+func (v *PbftValidator) GetValidatorSets() []types.Address {
+	return v.validatorSet.Values()
+}
+
 func (v *PbftValidator) GetLeader(view, sequence uint64) types.Address {
 	validators := v.validatorSet.Values()
 
@@ -88,22 +92,22 @@ func (v *PbftValidator) validatePrePrepareMessage(m *PbftPrePrepareMessage) erro
 		return fmt.Errorf("invalid leader: expected %s, got %s", expectedLeader.ShortString(8), m.Address().ShortString(8))
 	}
 
-	_ = v.logger.Log("m", "pre-prepare message validated", "address", m.Address().ShortString(8))
+	_ = v.logger.Log("msg", "pre-prepare message validated", "address", m.Address().ShortString(8))
 	return nil
 }
 
 func (v *PbftValidator) validatePrepareMessage(m *PbftPrepareMessage) error {
-	_ = v.logger.Log("m", "prepare message validated", "address", m.Address().ShortString(8))
+	_ = v.logger.Log("msg", "prepare message validated", "address", m.Address().ShortString(8))
 	return nil
 }
 
 func (v *PbftValidator) validateCommitMessage(m *PbftCommitMessage) error {
-	_ = v.logger.Log("m", "commit message validated", "address", m.Address().ShortString(8))
+	_ = v.logger.Log("msg", "commit message validated", "address", m.Address().ShortString(8))
 	return nil
 }
 
 func (v *PbftValidator) validateViewChangeMessage(m *PbftViewChangeMessage) error {
-	_ = v.logger.Log("m", "view-change message validated", "address", m.Address().ShortString(8))
+	_ = v.logger.Log("msg", "view-change message validated", "address", m.Address().ShortString(8))
 	return nil
 }
 
@@ -113,6 +117,6 @@ func (v *PbftValidator) validateNewViewMessage(m *PbftNewViewMessage) error {
 		return fmt.Errorf("invalid new-view leader:  expected %s, got %s", expectedLeader.ShortString(8), m.Address().ShortString(8))
 	}
 
-	_ = v.logger.Log("m", "new-view message validated", "address", m.Address().ShortString(8))
+	_ = v.logger.Log("msg", "new-view message validated", "address", m.Address().ShortString(8))
 	return nil
 }

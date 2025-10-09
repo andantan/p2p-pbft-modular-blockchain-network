@@ -23,6 +23,23 @@ func GenerateTestBlockchain(t *testing.T) *Blockchain {
 	return bc
 }
 
+func GenerateTestBlockchainAndProcessor(t *testing.T) (*Blockchain, *BlockProcessor) {
+	t.Helper()
+
+	dir := t.TempDir()
+	s := NewBlockStorage(dir)
+
+	bc := NewBlockchain()
+	bc.SetStorer(s)
+
+	p := NewBlockProcessor(bc)
+	bc.SetBlockProcessor(p)
+
+	bc.Bootstrap()
+
+	return bc, p
+}
+
 func AddTestBlocksToBlockchain(t *testing.T, bc *Blockchain, c uint64) {
 	t.Helper()
 

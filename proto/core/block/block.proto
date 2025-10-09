@@ -5,13 +5,15 @@ option go_package = "github.com/andantan/p2p-pbft-modular-blockchain-network/pro
 
 import "proto/core/block/header.proto";
 import "proto/core/block/body.proto";
+import "proto/core/block/tail.proto";
 
 message Block {
   bytes block_hash = 1;
 
   Header header = 2;
   Body body = 3;
+  Tail tail = 4;
 
-  bytes proposer = 4;
-  bytes signature = 5;
+  bytes proposer = 5;
+  bytes signature = 6;
 }

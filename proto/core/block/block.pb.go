@@ -26,8 +26,9 @@ type Block struct {
 	BlockHash     []byte                 `protobuf:"bytes,1,opt,name=block_hash,json=blockHash,proto3" json:"block_hash,omitempty"`
 	Header        *Header                `protobuf:"bytes,2,opt,name=header,proto3" json:"header,omitempty"`
 	Body          *Body                  `protobuf:"bytes,3,opt,name=body,proto3" json:"body,omitempty"`
-	Proposer      []byte                 `protobuf:"bytes,4,opt,name=proposer,proto3" json:"proposer,omitempty"`
-	Signature     []byte                 `protobuf:"bytes,5,opt,name=signature,proto3" json:"signature,omitempty"`
+	Tail          *Tail                  `protobuf:"bytes,4,opt,name=tail,proto3" json:"tail,omitempty"`
+	Proposer      []byte                 `protobuf:"bytes,5,opt,name=proposer,proto3" json:"proposer,omitempty"`
+	Signature     []byte                 `protobuf:"bytes,6,opt,name=signature,proto3" json:"signature,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -83,6 +84,13 @@ func (x *Block) GetBody() *Body {
 	return nil
 }
 
+func (x *Block) GetTail() *Tail {
+	if x != nil {
+		return x.Tail
+	}
+	return nil
+}
+
 func (x *Block) GetProposer() []byte {
 	if x != nil {
 		return x.Proposer
@@ -101,14 +109,15 @@ var File_proto_core_block_block_proto protoreflect.FileDescriptor
 
 const file_proto_core_block_block_proto_rawDesc = "" +
 	"\n" +
-	"\x1cproto/core/block/block.proto\x12\x05block\x1a\x1dproto/core/block/header.proto\x1a\x1bproto/core/block/body.proto\"\xa8\x01\n" +
+	"\x1cproto/core/block/block.proto\x12\x05block\x1a\x1dproto/core/block/header.proto\x1a\x1bproto/core/block/body.proto\x1a\x1bproto/core/block/tail.proto\"\xc9\x01\n" +
 	"\x05Block\x12\x1d\n" +
 	"\n" +
 	"block_hash\x18\x01 \x01(\fR\tblockHash\x12%\n" +
 	"\x06header\x18\x02 \x01(\v2\r.block.HeaderR\x06header\x12\x1f\n" +
-	"\x04body\x18\x03 \x01(\v2\v.block.BodyR\x04body\x12\x1a\n" +
-	"\bproposer\x18\x04 \x01(\fR\bproposer\x12\x1c\n" +
-	"\tsignature\x18\x05 \x01(\fR\tsignatureBJZHgithub.com/andantan/p2p-pbft-modular-blockchain-network/proto/core/blockb\x06proto3"
+	"\x04body\x18\x03 \x01(\v2\v.block.BodyR\x04body\x12\x1f\n" +
+	"\x04tail\x18\x04 \x01(\v2\v.block.TailR\x04tail\x12\x1a\n" +
+	"\bproposer\x18\x05 \x01(\fR\bproposer\x12\x1c\n" +
+	"\tsignature\x18\x06 \x01(\fR\tsignatureBJZHgithub.com/andantan/p2p-pbft-modular-blockchain-network/proto/core/blockb\x06proto3"
 
 var (
 	file_proto_core_block_block_proto_rawDescOnce sync.Once
@@ -127,15 +136,17 @@ var file_proto_core_block_block_proto_goTypes = []any{
 	(*Block)(nil),  // 0: block.Block
 	(*Header)(nil), // 1: block.Header
 	(*Body)(nil),   // 2: block.Body
+	(*Tail)(nil),   // 3: block.Tail
 }
 var file_proto_core_block_block_proto_depIdxs = []int32{
 	1, // 0: block.Block.header:type_name -> block.Header
 	2, // 1: block.Block.body:type_name -> block.Body
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	3, // 2: block.Block.tail:type_name -> block.Tail
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_proto_core_block_block_proto_init() }
@@ -145,6 +156,7 @@ func file_proto_core_block_block_proto_init() {
 	}
 	file_proto_core_block_header_proto_init()
 	file_proto_core_block_body_proto_init()
+	file_proto_core_block_tail_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

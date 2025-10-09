@@ -2,6 +2,7 @@ package network
 
 type ConsensusEngine interface {
 	Start()
-	HandleMessage(ConsensusMessage) error
+	HandleMessage(ConsensusMessage)
+	Finalize()
 	Stop()
 }
