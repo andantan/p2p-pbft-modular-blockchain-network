@@ -20,7 +20,7 @@ func TestPbftConsensusEngine_HandlePrePrepare(t *testing.T) {
 	ppMsg := NewPbftPrePrepareMessage(0, b.Header.Height, b, leaderKey.PublicKey())
 	assert.NoError(t, ppMsg.Sign(leaderKey))
 
-	engine.Start()
+	engine.StartEngine()
 
 	go engine.HandleMessage(ppMsg)
 
@@ -33,6 +33,8 @@ func TestPbftConsensusEngine_HandlePrePrepare(t *testing.T) {
 	case <-time.After(100 * time.Millisecond):
 		t.Fatal("engine does not send PrePrepareMessage to channel")
 	}
+
+	engine.StopEngine()
 }
 
 func TestPbftConsensusEngine_HandlePrepare(t *testing.T) {
@@ -47,7 +49,7 @@ func TestPbftConsensusEngine_HandlePrepare(t *testing.T) {
 	ppMsg := NewPbftPrePrepareMessage(0, uint64(ih), b, leaderKey.PublicKey())
 	assert.NoError(t, ppMsg.Sign(leaderKey))
 
-	engine.Start()
+	engine.StartEngine()
 
 	go engine.HandleMessage(ppMsg)
 
@@ -93,11 +95,13 @@ func TestPbftConsensusEngine_HandlePrepare(t *testing.T) {
 			}
 		}
 	}
+
+	engine.StopEngine()
 }
 
 func TestPbftConsensusEngine_HandleCommit(t *testing.T) {
 	// phase pre-prepare
-	vc, ih := 10, 6
+	vc, ih := 15, 6
 	nh := ih + 1
 	bc, validatorKeys, engine, fbCh, extCh := GenerateTestPbftConsensusEngine(t, vc, ih)
 	leaderKey := GetLeaderFromTestValidators(t, validatorKeys, 0, uint64(nh))
@@ -109,7 +113,7 @@ func TestPbftConsensusEngine_HandleCommit(t *testing.T) {
 	ppMsg := NewPbftPrePrepareMessage(0, height, b, leaderKey.PublicKey())
 	assert.NoError(t, ppMsg.Sign(leaderKey))
 
-	engine.Start()
+	engine.StartEngine()
 
 	go engine.HandleMessage(ppMsg)
 
@@ -120,7 +124,7 @@ func TestPbftConsensusEngine_HandleCommit(t *testing.T) {
 		assert.True(t, engine.state.Eq(PrePrepared))
 
 	case <-time.After(100 * time.Millisecond):
-		t.Fatal("engine does not send PrePrepareMessage to channel")
+		t.Fatal("engine does not send PrePrepareMessage to channel!")
 	}
 
 	// phase prepare
@@ -169,7 +173,7 @@ func TestPbftConsensusEngine_HandleCommit(t *testing.T) {
 				assert.True(t, ok)
 				assert.True(t, engine.state.Eq(Prepared))
 			case <-time.After(100 * time.Millisecond):
-				t.Fatal("engine does not send PbftCommitMessage to channel")
+				t.Fatal("engine does not send PbftCommitMessage to channel!")
 			}
 		}
 	}
@@ -179,10 +183,12 @@ func TestPbftConsensusEngine_HandleCommit(t *testing.T) {
 		finalizedBlockHash, err := fb.Hash()
 		assert.NoError(t, err)
 		assert.True(t, bh.Equal(finalizedBlockHash))
-		assert.True(t, engine.state.Eq(Finalized))
 		assert.NotNil(t, fb.Tail)
 
 	case <-time.After(time.Second):
 		t.Fatal("block does not finalized")
 	}
+
+	engine.StopEngine()
+	assert.True(t, engine.state.Eq(Terminated))
 }

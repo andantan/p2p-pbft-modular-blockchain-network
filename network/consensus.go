@@ -1,8 +1,7 @@
 package network
 
 type ConsensusEngine interface {
-	Start()
+	StartEngine()
 	HandleMessage(ConsensusMessage)
-	Finalize()
-	Stop()
+	StopEngine()
 }
