@@ -140,10 +140,10 @@ func (e *PbftConsensusEngine) Finalize() {
 	votes := e.commitVotes.Values()
 	commitVotes := make([]*block.CommitVote, len(votes))
 	for i, v := range votes {
-		commitVotes[i] = block.NewCommitVote(v.PublicKey, v.Signature)
+		commitVotes[i] = block.NewCommitVote(v.Digest, v.PublicKey, v.Signature)
 	}
 
-	if err := e.block.Seal(e.view.Get(), e.sequence, commitVotes, e.validator.GetValidatorSets()); err != nil {
+	if err := e.block.Seal(commitVotes, e.validator.GetValidatorSets()); err != nil {
 		_ = e.logger.Log("msg", "block_seal_failed", "view", e.view.Get(), "sequence", e.sequence, "err", err)
 		// e.startViewChange()
 		return

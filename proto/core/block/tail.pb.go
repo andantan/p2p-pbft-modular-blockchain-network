@@ -23,8 +23,9 @@ const (
 
 type CommitVote struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	PublicKey     []byte                 `protobuf:"bytes,1,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
-	Signature     []byte                 `protobuf:"bytes,2,opt,name=signature,proto3" json:"signature,omitempty"`
+	Digest        []byte                 `protobuf:"bytes,1,opt,name=digest,proto3" json:"digest,omitempty"`
+	PublicKey     []byte                 `protobuf:"bytes,2,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
+	Signature     []byte                 `protobuf:"bytes,3,opt,name=signature,proto3" json:"signature,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -57,6 +58,13 @@ func (x *CommitVote) ProtoReflect() protoreflect.Message {
 // Deprecated: Use CommitVote.ProtoReflect.Descriptor instead.
 func (*CommitVote) Descriptor() ([]byte, []int) {
 	return file_proto_core_block_tail_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *CommitVote) GetDigest() []byte {
+	if x != nil {
+		return x.Digest
+	}
+	return nil
 }
 
 func (x *CommitVote) GetPublicKey() []byte {
@@ -121,12 +129,13 @@ var File_proto_core_block_tail_proto protoreflect.FileDescriptor
 
 const file_proto_core_block_tail_proto_rawDesc = "" +
 	"\n" +
-	"\x1bproto/core/block/tail.proto\x12\x05block\"I\n" +
+	"\x1bproto/core/block/tail.proto\x12\x05block\"a\n" +
 	"\n" +
-	"CommitVote\x12\x1d\n" +
+	"CommitVote\x12\x16\n" +
+	"\x06digest\x18\x01 \x01(\fR\x06digest\x12\x1d\n" +
 	"\n" +
-	"public_key\x18\x01 \x01(\fR\tpublicKey\x12\x1c\n" +
-	"\tsignature\x18\x02 \x01(\fR\tsignature\"<\n" +
+	"public_key\x18\x02 \x01(\fR\tpublicKey\x12\x1c\n" +
+	"\tsignature\x18\x03 \x01(\fR\tsignature\"<\n" +
 	"\x04Tail\x124\n" +
 	"\fcommit_votes\x18\x01 \x03(\v2\x11.block.CommitVoteR\vcommitVotesBJZHgithub.com/andantan/p2p-pbft-modular-blockchain-network/proto/core/blockb\x06proto3"
 

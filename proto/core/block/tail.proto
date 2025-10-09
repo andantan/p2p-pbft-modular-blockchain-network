@@ -4,8 +4,9 @@ package block;
 option go_package = "github.com/andantan/p2p-pbft-modular-blockchain-network/proto/core/block";
 
 message CommitVote {
-  bytes public_key = 1;
-  bytes signature = 2;
+  bytes digest = 1;
+  bytes public_key = 2;
+  bytes signature = 3;
 }
 
 message Tail {

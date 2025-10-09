@@ -7,7 +7,7 @@ import (
 
 func TestCommitVote_EncodeDecode(t *testing.T) {
 	data := []byte("hello")
-	originalVote := GenerateRandomTestCommitVote(t, data)
+	originalVote := GenerateRandomTestCommitVote(t, data, 0, 1)
 
 	// Marshalling
 	encodedBytes := MarshallTestCommitVote(t, originalVote)
@@ -15,7 +15,7 @@ func TestCommitVote_EncodeDecode(t *testing.T) {
 	// Unmarshalling
 	decodedVote := UnMarshallTestCommitVote(t, encodedBytes)
 
-	assert.True(t, decodedVote.Signature.Verify(decodedVote.PublicKey, data))
+	assert.True(t, decodedVote.Signature.Verify(decodedVote.PublicKey, originalVote.Digest.Bytes()))
 	assert.True(t, originalVote.PublicKey.Equal(decodedVote.PublicKey))
 	assert.True(t, originalVote.Signature.R.Cmp(decodedVote.Signature.R) == 0)
 	assert.True(t, originalVote.Signature.S.Cmp(decodedVote.Signature.S) == 0)
@@ -23,7 +23,7 @@ func TestCommitVote_EncodeDecode(t *testing.T) {
 
 func TestTail_EncodeDecode(t *testing.T) {
 	data := []byte("hello")
-	originalTail := GenerateRandomTestTail(t, data, 30)
+	originalTail := GenerateRandomTestTail(t, data, 30, 0, 1)
 
 	// Marshalling
 	encodedBytes := MarshallTestTail(t, originalTail)

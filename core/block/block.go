@@ -1,9 +1,6 @@
 package block
 
 import (
-	"bytes"
-	"crypto/sha256"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"github.com/andantan/p2p-pbft-modular-blockchain-network/crypto"
@@ -234,7 +231,7 @@ func (b *Block) EmptyProto() proto.Message {
 	return &pb.Block{}
 }
 
-func (b *Block) Seal(view, sequence uint64, votes []*CommitVote, set []types.Address) error {
+func (b *Block) Seal(votes []*CommitVote, set []types.Address) error {
 	if b.Tail != nil {
 		return fmt.Errorf("block tail is already set")
 	}
@@ -256,47 +253,12 @@ func (b *Block) Seal(view, sequence uint64, votes []*CommitVote, set []types.Add
 			return fmt.Errorf("tail contains vote from non-validator: %s", v.PublicKey.Address())
 		}
 
-		if err := b.VerifyCommitVote(view, sequence, v.PublicKey, v.Signature); err != nil {
-			return err
+		if !v.Signature.Verify(v.PublicKey, v.Digest.Bytes()) {
+			return fmt.Errorf("invalid signature in CommitVote")
 		}
 	}
 
 	b.Tail = NewTail(votes)
 
 	return nil
-}
-
-func (b *Block) VerifyCommitVote(view, sequence uint64, key *crypto.PublicKey, sig *crypto.Signature) error {
-	ch, err := b.HashCommitVote(view, sequence)
-
-	if err != nil {
-		return err
-	}
-
-	if !sig.Verify(key, ch.Bytes()) {
-		return fmt.Errorf("invalid signature in CommitVote")
-	}
-
-	return nil
-}
-
-func (b *Block) HashCommitVote(view, sequence uint64) (types.Hash, error) {
-	buf := new(bytes.Buffer)
-
-	if err := binary.Write(buf, binary.LittleEndian, view); err != nil {
-		return types.ZeroHash, err
-	}
-	if err := binary.Write(buf, binary.LittleEndian, sequence); err != nil {
-		return types.ZeroHash, err
-	}
-
-	bh, err := b.Hash()
-	if err != nil {
-		return types.ZeroHash, err
-	}
-
-	buf.Write(bh.Bytes())
-
-	hash := sha256.Sum256(buf.Bytes())
-	return hash, nil
 }
