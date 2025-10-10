@@ -3,9 +3,9 @@ package block
 import (
 	"crypto/sha256"
 	"errors"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/codec"
-	pb "github.com/andantan/p2p-pbft-modular-blockchain-network/proto/core/block"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/types"
+	"github.com/andantan/modular-blockchain/codec"
+	pb "github.com/andantan/modular-blockchain/proto/core/block"
+	"github.com/andantan/modular-blockchain/types"
 	"google.golang.org/protobuf/proto"
 	"time"
 )

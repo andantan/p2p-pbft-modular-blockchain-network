@@ -33,7 +33,7 @@ func (m *AtomicMap[K, V]) Exists(k K) bool {
 	return ok
 }
 
-func (m *AtomicMap[K, V]) PutIfNotExists(k K, v V) bool {
+func (m *AtomicMap[K, V]) PutIfNotExist(k K, v V) bool {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -86,6 +86,17 @@ func (m *AtomicMap[K, V]) Values() []V {
 	}
 
 	return values
+}
+
+func (m *AtomicMap[K, V]) Range(f func(k K, v V) bool) {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
+
+	for k, v := range m.m {
+		if !f(k, v) {
+			break
+		}
+	}
 }
 
 func (m *AtomicMap[K, V]) Iterator() func(yield func(K, V) bool) {

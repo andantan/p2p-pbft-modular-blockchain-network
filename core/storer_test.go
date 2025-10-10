@@ -1,8 +1,8 @@
 package core
 
 import (
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/core/block"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/util"
+	"github.com/andantan/modular-blockchain/core/block"
+	"github.com/andantan/modular-blockchain/util"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )

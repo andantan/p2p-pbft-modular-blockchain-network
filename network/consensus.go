@@ -1,11 +1,14 @@
 package network
 
-import "github.com/andantan/p2p-pbft-modular-blockchain-network/core/block"
+import (
+	"github.com/andantan/modular-blockchain/core/block"
+	"github.com/andantan/modular-blockchain/network/message"
+)
 
 type ConsensusEngine interface {
 	StartEngine()
-	HandleMessage(ConsensusMessage)
-	OutgoingMessage() <-chan ConsensusMessage
+	HandleMessage(message.ConsensusMessage)
+	OutgoingMessage() <-chan message.ConsensusMessage
 	FinalizedBlock() <-chan *block.Block
 	StopEngine()
 }

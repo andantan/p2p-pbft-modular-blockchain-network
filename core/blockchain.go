@@ -1,10 +1,10 @@
 package core
 
 import (
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/core/block"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/core/contract"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/types"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/util"
+	"github.com/andantan/modular-blockchain/core/block"
+	"github.com/andantan/modular-blockchain/core/contract"
+	"github.com/andantan/modular-blockchain/types"
+	"github.com/andantan/modular-blockchain/util"
 	"github.com/go-kit/log"
 )
 

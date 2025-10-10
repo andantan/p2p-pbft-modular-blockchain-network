@@ -6,11 +6,11 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/core/block"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/crypto"
-	pbBlock "github.com/andantan/p2p-pbft-modular-blockchain-network/proto/core/block"
-	pbPbft "github.com/andantan/p2p-pbft-modular-blockchain-network/proto/network/consensus/pbft"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/types"
+	"github.com/andantan/modular-blockchain/core/block"
+	"github.com/andantan/modular-blockchain/crypto"
+	pbBlock "github.com/andantan/modular-blockchain/proto/core/block"
+	pbPbft "github.com/andantan/modular-blockchain/proto/network/consensus/pbft"
+	"github.com/andantan/modular-blockchain/types"
 	"google.golang.org/protobuf/proto"
 )
 

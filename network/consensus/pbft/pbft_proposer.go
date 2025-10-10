@@ -1,11 +1,11 @@
 package pbft
 
 import (
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/core"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/core/block"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/crypto"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/network"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/util"
+	"github.com/andantan/modular-blockchain/core"
+	"github.com/andantan/modular-blockchain/core/block"
+	"github.com/andantan/modular-blockchain/crypto"
+	"github.com/andantan/modular-blockchain/network/message"
+	"github.com/andantan/modular-blockchain/util"
 	"github.com/go-kit/log"
 )
 
@@ -55,7 +55,7 @@ func (p *PbftProposer) Createblock(c core.Chain, mp core.VirtualMemoryPool) (*bl
 	return b, nil
 }
 
-func (p *PbftProposer) ProposeBlock(b *block.Block) (network.Message, error) {
+func (p *PbftProposer) ProposeBlock(b *block.Block) (message.Message, error) {
 	sequence := b.Header.Height
 	view := uint64(0)
 

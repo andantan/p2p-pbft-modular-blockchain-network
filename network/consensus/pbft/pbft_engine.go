@@ -3,12 +3,12 @@ package pbft
 import (
 	"errors"
 	"fmt"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/core"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/core/block"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/crypto"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/network"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/types"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/util"
+	"github.com/andantan/modular-blockchain/core"
+	"github.com/andantan/modular-blockchain/core/block"
+	"github.com/andantan/modular-blockchain/crypto"
+	"github.com/andantan/modular-blockchain/network/message"
+	"github.com/andantan/modular-blockchain/types"
+	"github.com/andantan/modular-blockchain/util"
 	"github.com/go-kit/log"
 	"sync"
 	"time"
@@ -66,8 +66,8 @@ type PbftConsensusEngine struct {
 	viewChangeTimeout time.Duration
 
 	finalizedBlockCh chan *block.Block
-	outgoingMsgCh    chan network.ConsensusMessage
-	internalMsgCh    chan network.ConsensusMessage
+	outgoingMsgCh    chan message.ConsensusMessage
+	internalMsgCh    chan message.ConsensusMessage
 	closeCh          chan struct{}
 
 	finalizeOnce sync.Once
@@ -97,8 +97,8 @@ func NewPbftConsensusEngine(
 		viewChangeVotes:   types.NewAtomicMap[types.Address, *PbftViewChangeMessage](),
 		viewChangeTimeout: 5 * time.Second,
 		finalizedBlockCh:  make(chan *block.Block, 1),
-		outgoingMsgCh:     make(chan network.ConsensusMessage, 100),
-		internalMsgCh:     make(chan network.ConsensusMessage, 100),
+		outgoingMsgCh:     make(chan message.ConsensusMessage, 100),
+		internalMsgCh:     make(chan message.ConsensusMessage, 100),
 		closeCh:           make(chan struct{}),
 	}
 
@@ -116,7 +116,7 @@ func (e *PbftConsensusEngine) StartEngine() {
 	go e.run()
 }
 
-func (e *PbftConsensusEngine) HandleMessage(m network.ConsensusMessage) {
+func (e *PbftConsensusEngine) HandleMessage(m message.ConsensusMessage) {
 	if e.state.Gte(Finalized) {
 		return
 	}
@@ -134,7 +134,7 @@ func (e *PbftConsensusEngine) HandleMessage(m network.ConsensusMessage) {
 	}
 }
 
-func (e *PbftConsensusEngine) OutgoingMessage() <-chan network.ConsensusMessage {
+func (e *PbftConsensusEngine) OutgoingMessage() <-chan message.ConsensusMessage {
 	return e.outgoingMsgCh
 }
 
@@ -157,7 +157,7 @@ func (e *PbftConsensusEngine) StopEngine() {
 	})
 }
 
-func (e *PbftConsensusEngine) handlePrePrepareMessage(m *PbftPrePrepareMessage) (network.ConsensusMessage, error) {
+func (e *PbftConsensusEngine) handlePrePrepareMessage(m *PbftPrePrepareMessage) (message.ConsensusMessage, error) {
 	if e.state.Gte(PrePrepared) {
 		return nil, nil
 	}
@@ -190,7 +190,7 @@ func (e *PbftConsensusEngine) handlePrePrepareMessage(m *PbftPrePrepareMessage) 
 	return msg, nil
 }
 
-func (e *PbftConsensusEngine) handlePrepareMessage(m *PbftPrepareMessage) (network.ConsensusMessage, error) {
+func (e *PbftConsensusEngine) handlePrepareMessage(m *PbftPrepareMessage) (message.ConsensusMessage, error) {
 	if e.state.Gte(Prepared) {
 		return nil, nil
 	}
@@ -233,7 +233,7 @@ func (e *PbftConsensusEngine) handlePrepareMessage(m *PbftPrepareMessage) (netwo
 	return nil, nil
 }
 
-func (e *PbftConsensusEngine) handleCommitMessage(m *PbftCommitMessage) (network.ConsensusMessage, error) {
+func (e *PbftConsensusEngine) handleCommitMessage(m *PbftCommitMessage) (message.ConsensusMessage, error) {
 	if e.state.Gte(Committed) {
 		return nil, nil
 	}
@@ -271,7 +271,7 @@ func (e *PbftConsensusEngine) handleCommitMessage(m *PbftCommitMessage) (network
 	return nil, nil
 }
 
-func (e *PbftConsensusEngine) handleViewChangeMessage(m *PbftViewChangeMessage) (network.ConsensusMessage, error) {
+func (e *PbftConsensusEngine) handleViewChangeMessage(m *PbftViewChangeMessage) (message.ConsensusMessage, error) {
 	if e.state.Gte(Finalized) {
 		return nil, nil
 	}
@@ -315,7 +315,7 @@ func (e *PbftConsensusEngine) handleViewChangeMessage(m *PbftViewChangeMessage) 
 	return nil, nil
 }
 
-func (e *PbftConsensusEngine) handleNewViewMessage(m *PbftNewViewMessage) (network.ConsensusMessage, error) {
+func (e *PbftConsensusEngine) handleNewViewMessage(m *PbftNewViewMessage) (message.ConsensusMessage, error) {
 	if e.state.Gte(Finalized) {
 		return nil, nil
 	}
@@ -380,7 +380,7 @@ func (e *PbftConsensusEngine) run() {
 			timer.Reset(e.viewChangeTimeout)
 
 			var (
-				rm  network.ConsensusMessage
+				rm  message.ConsensusMessage
 				err error
 			)
 			switch t := msg.(type) {
@@ -465,7 +465,7 @@ func (e *PbftConsensusEngine) startViewChange() error {
 	return nil
 }
 
-func (e *PbftConsensusEngine) sendToOutgoing(m network.ConsensusMessage) {
+func (e *PbftConsensusEngine) sendToOutgoing(m message.ConsensusMessage) {
 	select {
 	case <-e.closeCh:
 		return

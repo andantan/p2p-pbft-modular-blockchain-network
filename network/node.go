@@ -1,10 +1,15 @@
 package network
 
-import "github.com/andantan/p2p-pbft-modular-blockchain-network/types"
+import (
+	"github.com/andantan/modular-blockchain/network/message"
+	"github.com/andantan/modular-blockchain/types"
+)
 
 type Node interface {
 	Listen()
 	Connect(string) error
-	Remove(types.Address)
-	Stop()
+	ConsumeRawMessage() <-chan message.Raw
+	Broadcast(message.Message) error
+	Disconnect(types.Address)
+	Close()
 }

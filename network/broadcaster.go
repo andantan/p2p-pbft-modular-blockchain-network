@@ -1,5 +1,7 @@
 package network
 
+import "github.com/andantan/modular-blockchain/network/message"
+
 type Broadcaster interface {
-	Broadcast(Message) error
+	Broadcast(message.Message) error
 }

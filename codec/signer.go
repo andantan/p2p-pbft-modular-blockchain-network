@@ -1,6 +1,6 @@
 package codec
 
-import "github.com/andantan/p2p-pbft-modular-blockchain-network/crypto"
+import "github.com/andantan/modular-blockchain/crypto"
 
 type Signer interface {
 	Sign(key *crypto.PrivateKey) error

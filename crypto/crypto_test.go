@@ -1,7 +1,7 @@
 package crypto
 
 import (
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/types"
+	"github.com/andantan/modular-blockchain/types"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -46,7 +46,7 @@ func TestSignatureSerialization(t *testing.T) {
 
 	privKey, err := GeneratePrivateKey()
 	assert.NoError(t, err)
-	
+
 	sig, err := privKey.Sign(data)
 	assert.NoError(t, err)
 

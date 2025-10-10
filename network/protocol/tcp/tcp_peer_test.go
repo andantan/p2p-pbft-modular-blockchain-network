@@ -1,9 +1,7 @@
 package tcp
 
 import (
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/crypto"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/network"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/network/message"
+	"github.com/andantan/modular-blockchain/crypto"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"net"
@@ -15,15 +13,17 @@ import (
 func TestTCPPeer_Handshake(t *testing.T) {
 	connA, connB := net.Pipe()
 
-	peerA := NewTcpPeer(connA, nil, nil)
-	peerB := NewTcpPeer(connB, nil, nil)
+	peerA := NewTcpPeer(connA)
+	defer peerA.Close()
+	peerB := NewTcpPeer(connB)
+	defer peerB.Close()
 
 	wg := new(sync.WaitGroup)
 	wg.Add(2)
 
 	var (
-		MsgFromA network.Message
-		MsgFromB network.Message
+		MsgFromA *TcpHandshakeMessage
+		MsgFromB *TcpHandshakeMessage
 	)
 
 	go func(wg *sync.WaitGroup) {
@@ -33,13 +33,13 @@ func TestTCPPeer_Handshake(t *testing.T) {
 
 		privKeyA, err := crypto.GeneratePrivateKey()
 		assert.NoError(t, err)
-		msgA := NewTCPHandshakeMessage(privKeyA.PublicKey(), "addr_A")
+		msgA := NewTcpHandshakeMessage(privKeyA.PublicKey(), "addr_A")
 		assert.NotNil(t, msgA.PublicKey)
 		assert.NotNil(t, msgA.NetAddr)
 		assert.NoError(t, msgA.Sign(privKeyA))
 		assert.NotNil(t, msgA.Signature)
 
-		MsgFromB, err = peerA.Handshake(msgA)
+		MsgFromB, err = peerA.handshake(msgA)
 		assert.NotNil(t, MsgFromB)
 		assert.NoError(t, err)
 	}(wg)
@@ -50,31 +50,26 @@ func TestTCPPeer_Handshake(t *testing.T) {
 		var err error
 		privKeyB, err := crypto.GeneratePrivateKey()
 		assert.NoError(t, err)
-		msgB := NewTCPHandshakeMessage(privKeyB.PublicKey(), "addr_B")
+		msgB := NewTcpHandshakeMessage(privKeyB.PublicKey(), "addr_B")
 		assert.NotNil(t, msgB.PublicKey)
 		assert.NotNil(t, msgB.NetAddr)
 		assert.NoError(t, msgB.Sign(privKeyB))
 		assert.NotNil(t, msgB.Signature)
 
-		MsgFromA, err = peerB.Handshake(msgB)
+		MsgFromA, err = peerB.handshake(msgB)
 		assert.NotNil(t, MsgFromA)
 		assert.NoError(t, err)
 	}(wg)
 
 	wg.Wait()
 
-	aHand, ok := MsgFromA.(*TCPHandshakeMessage)
-	assert.True(t, ok)
-	bHand, ok := MsgFromB.(*TCPHandshakeMessage)
-	assert.True(t, ok)
+	assert.NoError(t, MsgFromA.Verify())
+	assert.NoError(t, MsgFromB.Verify())
 
-	assert.NoError(t, aHand.Verify())
-	assert.NoError(t, bHand.Verify())
-
-	expectedAddrA := aHand.PublicKey.Address()
+	expectedAddrA := MsgFromA.PublicKey.Address()
 	assert.NotNil(t, peerA.Address())
 	assert.Equal(t, expectedAddrA, peerB.Address())
-	expectedAddrB := bHand.PublicKey.Address()
+	expectedAddrB := MsgFromB.PublicKey.Address()
 	assert.NotNil(t, peerB.Address())
 	assert.Equal(t, expectedAddrB, peerA.Address())
 
@@ -82,22 +77,28 @@ func TestTCPPeer_Handshake(t *testing.T) {
 }
 
 func TestTCPPeer_SendAndRead(t *testing.T) {
-	msgCh := make(chan message.RawMessage, 1)
-	delCh := make(chan *TcpPeer, 1)
-
 	connA, connB := net.Pipe()
 
-	peerA := NewTcpPeer(connA, msgCh, delCh)
-	peerB := NewTcpPeer(connB, msgCh, delCh)
+	peerA := NewTcpPeer(connA)
+	defer func() {
+		peerA.Close()
+		assert.True(t, peerA.state.Eq(Closed))
+	}()
+	peerB := NewTcpPeer(connB)
+	defer func() {
+		peerB.Close()
+		assert.True(t, peerB.state.Eq(Closed))
+	}()
 
 	go peerB.Read()
 
 	msgToSend := []byte("hello world")
 	assert.NoError(t, peerA.Send(msgToSend))
 
+	peerBMsgCh := peerB.ConsumeRawMessage()
 	select {
-	case rawMsg := <-msgCh:
-		receivedMsg, err := io.ReadAll(rawMsg.Payload)
+	case rawMsg := <-peerBMsgCh:
+		receivedMsg, err := io.ReadAll(rawMsg.Payload())
 		assert.NoError(t, err)
 		assert.Equal(t, msgToSend, receivedMsg)
 	case <-time.After(1 * time.Second):
@@ -106,13 +107,18 @@ func TestTCPPeer_SendAndRead(t *testing.T) {
 }
 
 func TestTCPPeer_Close(t *testing.T) {
-	msgCh := make(chan message.RawMessage)
-	delCh := make(chan *TcpPeer, 1)
-
 	connA, connB := net.Pipe()
 
-	peerA := NewTcpPeer(connA, msgCh, delCh)
-	peerB := NewTcpPeer(connB, msgCh, delCh)
+	peerA := NewTcpPeer(connA)
+	defer func() {
+		peerA.Close()
+		assert.True(t, peerA.state.Eq(Closed))
+	}()
+	peerB := NewTcpPeer(connB)
+	defer func() {
+		peerB.Close()
+		assert.True(t, peerB.state.Eq(Closed))
+	}()
 
 	assert.True(t, peerA.state.Eq(Initialized))
 	assert.True(t, peerB.state.Eq(Initialized))
@@ -121,8 +127,8 @@ func TestTCPPeer_Close(t *testing.T) {
 	wg.Add(2)
 
 	var (
-		MsgFromA network.Message
-		MsgFromB network.Message
+		MsgFromA *TcpHandshakeMessage
+		MsgFromB *TcpHandshakeMessage
 	)
 
 	go func(wg *sync.WaitGroup) {
@@ -132,13 +138,13 @@ func TestTCPPeer_Close(t *testing.T) {
 
 		privKeyA, err := crypto.GeneratePrivateKey()
 		assert.NoError(t, err)
-		msgA := NewTCPHandshakeMessage(privKeyA.PublicKey(), "addr_A")
+		msgA := NewTcpHandshakeMessage(privKeyA.PublicKey(), "addr_A")
 		assert.NotNil(t, msgA.PublicKey)
 		assert.NotNil(t, msgA.NetAddr)
 		assert.NoError(t, msgA.Sign(privKeyA))
 		assert.NotNil(t, msgA.Signature)
 
-		MsgFromB, err = peerA.Handshake(msgA)
+		MsgFromB, err = peerA.handshake(msgA)
 		assert.NotNil(t, MsgFromB)
 		assert.NoError(t, err)
 	}(wg)
@@ -149,13 +155,13 @@ func TestTCPPeer_Close(t *testing.T) {
 		var err error
 		privKeyB, err := crypto.GeneratePrivateKey()
 		assert.NoError(t, err)
-		msgB := NewTCPHandshakeMessage(privKeyB.PublicKey(), "addr_B")
+		msgB := NewTcpHandshakeMessage(privKeyB.PublicKey(), "addr_B")
 		assert.NotNil(t, msgB.PublicKey)
 		assert.NotNil(t, msgB.NetAddr)
 		assert.NoError(t, msgB.Sign(privKeyB))
 		assert.NotNil(t, msgB.Signature)
 
-		MsgFromA, err = peerB.Handshake(msgB)
+		MsgFromA, err = peerB.handshake(msgB)
 		assert.NotNil(t, MsgFromA)
 		assert.NoError(t, err)
 	}(wg)
@@ -165,18 +171,13 @@ func TestTCPPeer_Close(t *testing.T) {
 	assert.True(t, peerA.state.Eq(Verified))
 	assert.True(t, peerB.state.Eq(Verified))
 
-	aHand, ok := MsgFromA.(*TCPHandshakeMessage)
-	assert.True(t, ok)
-	bHand, ok := MsgFromB.(*TCPHandshakeMessage)
-	assert.True(t, ok)
+	assert.NoError(t, MsgFromA.Verify())
+	assert.NoError(t, MsgFromB.Verify())
 
-	assert.NoError(t, aHand.Verify())
-	assert.NoError(t, bHand.Verify())
-
-	expectedAddrA := aHand.PublicKey.Address()
+	expectedAddrA := MsgFromA.PublicKey.Address()
 	assert.NotNil(t, peerA.Address())
 	assert.Equal(t, expectedAddrA, peerB.Address())
-	expectedAddrB := bHand.PublicKey.Address()
+	expectedAddrB := MsgFromB.PublicKey.Address()
 	assert.NotNil(t, peerB.Address())
 	assert.Equal(t, expectedAddrB, peerA.Address())
 
@@ -188,30 +189,28 @@ func TestTCPPeer_Close(t *testing.T) {
 	msgToSend := []byte("hello world")
 	assert.NoError(t, peerA.Send(msgToSend))
 
+	peerBMsgCh := peerB.ConsumeRawMessage()
+
 	select {
-	case rawMsg := <-msgCh:
-		receivedMsg, err := io.ReadAll(rawMsg.Payload)
+	case rawMsg := <-peerBMsgCh:
+		receivedMsg, err := io.ReadAll(rawMsg.Payload())
 		assert.NoError(t, err)
 		assert.Equal(t, msgToSend, receivedMsg)
 	case <-time.After(1 * time.Second):
 		t.Fatal("message was not received")
 	}
 
-	go peerA.Close()
-	go peerB.Close()
+	msgToSend2 := []byte("hello world2")
+	assert.NoError(t, peerB.Send(msgToSend2))
 
-	receivedPeers := make(map[*TcpPeer]bool)
-	for i := 0; i < 2; i++ {
-		select {
-		case terminatedPeer := <-delCh:
-			receivedPeers[terminatedPeer] = true
-		case <-time.After(1 * time.Second):
-			t.Fatalf("all peer was not closed")
-		}
+	peerAMsgCh := peerA.ConsumeRawMessage()
+
+	select {
+	case rawMsg := <-peerAMsgCh:
+		receivedMsg, err := io.ReadAll(rawMsg.Payload())
+		assert.NoError(t, err)
+		assert.Equal(t, msgToSend2, receivedMsg)
+	case <-time.After(1 * time.Second):
+		t.Fatal("message was not received")
 	}
-
-	assert.True(t, receivedPeers[peerA])
-	assert.True(t, receivedPeers[peerB])
-	assert.True(t, peerA.state.Eq(Closed))
-	assert.True(t, peerB.state.Eq(Closed))
 }

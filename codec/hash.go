@@ -1,6 +1,6 @@
 package codec
 
-import "github.com/andantan/p2p-pbft-modular-blockchain-network/types"
+import "github.com/andantan/modular-blockchain/types"
 
 type Hasher interface {
 	Hash() (types.Hash, error)

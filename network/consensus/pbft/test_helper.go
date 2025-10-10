@@ -2,12 +2,12 @@ package pbft
 
 import (
 	"bytes"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/core"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/core/block"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/crypto"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/network"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/types"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/util"
+	"github.com/andantan/modular-blockchain/core"
+	"github.com/andantan/modular-blockchain/core/block"
+	"github.com/andantan/modular-blockchain/crypto"
+	"github.com/andantan/modular-blockchain/network/message"
+	"github.com/andantan/modular-blockchain/types"
+	"github.com/andantan/modular-blockchain/util"
 	"github.com/stretchr/testify/assert"
 	"sort"
 	"testing"
@@ -172,7 +172,7 @@ func GenerateTestPbftProposer(t *testing.T) *PbftProposer {
 	return p
 }
 
-func GenerateTestPbftConsensusEngine(t *testing.T, valN, bcH int) (*core.Blockchain, []*crypto.PrivateKey, *PbftConsensusEngine, <-chan *block.Block, <-chan network.ConsensusMessage) {
+func GenerateTestPbftConsensusEngine(t *testing.T, valN, bcH int) (*core.Blockchain, []*crypto.PrivateKey, *PbftConsensusEngine, <-chan *block.Block, <-chan message.ConsensusMessage) {
 	t.Helper()
 
 	keys := make([]*crypto.PrivateKey, valN)

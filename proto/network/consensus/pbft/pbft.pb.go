@@ -7,7 +7,7 @@
 package pbft
 
 import (
-	block "github.com/andantan/p2p-pbft-modular-blockchain-network/proto/core/block"
+	block "github.com/andantan/modular-blockchain/proto/core/block"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"

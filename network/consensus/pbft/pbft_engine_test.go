@@ -1,8 +1,8 @@
 package pbft
 
 import (
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/core/block"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/network"
+	"github.com/andantan/modular-blockchain/core/block"
+	"github.com/andantan/modular-blockchain/network/message"
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
@@ -48,7 +48,7 @@ func TestPbftConsensusEngine_HandlePrepare(t *testing.T) {
 	engine.StartEngine()
 
 	var wg sync.WaitGroup
-	handler := func(msg network.ConsensusMessage) {
+	handler := func(msg message.ConsensusMessage) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -110,7 +110,7 @@ func TestPbftConsensusEngine_HandleCommit(t *testing.T) {
 	engine.StartEngine()
 
 	var wg sync.WaitGroup
-	handler := func(msg network.ConsensusMessage) {
+	handler := func(msg message.ConsensusMessage) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -194,7 +194,7 @@ func TestPbftConsensusEngine_ViewChange(t *testing.T) {
 		assert.Equal(t, sequence, engine.sequence)
 	}
 
-	igMsgCh := make(chan network.ConsensusMessage, 100)
+	igMsgCh := make(chan message.ConsensusMessage, 100)
 	igFbCh := make(chan *block.Block, 100)
 
 	for _, engine := range engines {
@@ -225,7 +225,7 @@ func TestPbftConsensusEngine_ViewChange(t *testing.T) {
 	}
 
 	var wg sync.WaitGroup
-	handler := func(engine *PbftConsensusEngine, msg network.ConsensusMessage) {
+	handler := func(engine *PbftConsensusEngine, msg message.ConsensusMessage) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

@@ -1,0 +1,12 @@
+[package]
+name = "discovery-server"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokio = { version = "1.47.1", features = ["full"] }
+axum = { version = "0.8.4", features = ["http2", "macros", "ws"] }
+serde = { version = "1.0.219", features = ["derive"] }
+uuid = { version = "1.18.1", features = ["v4"] }
+chrono = { version = "0.4.41"}
+rand = "0.9.2"

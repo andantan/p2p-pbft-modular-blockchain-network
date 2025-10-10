@@ -3,9 +3,9 @@ package block
 import (
 	"errors"
 	"fmt"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/crypto"
-	pb "github.com/andantan/p2p-pbft-modular-blockchain-network/proto/core/block"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/types"
+	"github.com/andantan/modular-blockchain/crypto"
+	pb "github.com/andantan/modular-blockchain/proto/core/block"
+	"github.com/andantan/modular-blockchain/types"
 	"google.golang.org/protobuf/proto"
 )
 

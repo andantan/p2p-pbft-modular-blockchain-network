@@ -2,7 +2,7 @@ package core
 
 import (
 	"context"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/core/block"
+	"github.com/andantan/modular-blockchain/core/block"
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
