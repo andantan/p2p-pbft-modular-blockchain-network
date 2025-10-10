@@ -49,13 +49,12 @@ func (s PbftState) String() string {
 
 type PbftConsensusEngine struct {
 	logger log.Logger
-	lock   sync.RWMutex
 
 	state    *types.AtomicNumber[PbftState]
+	block    *block.Block
 	view     *types.AtomicNumber[uint64]
 	sequence uint64
 
-	block     *block.Block
 	processor core.Processor
 
 	validator *PbftValidator
@@ -67,7 +66,7 @@ type PbftConsensusEngine struct {
 	viewChangeTimeout time.Duration
 
 	finalizedBlockCh chan *block.Block
-	externalMsgCh    chan network.ConsensusMessage
+	outgoingMsgCh    chan network.ConsensusMessage
 	internalMsgCh    chan network.ConsensusMessage
 	closeCh          chan struct{}
 
@@ -77,27 +76,28 @@ type PbftConsensusEngine struct {
 
 func NewPbftConsensusEngine(
 	k *crypto.PrivateKey,
+	b *block.Block,
 	p core.Processor,
-	validatorSet []types.Address,
-	finalizedBlockCh chan *block.Block,
-	externalMsgCh chan network.ConsensusMessage,
+	validators []types.Address,
 ) *PbftConsensusEngine {
 	v := NewPbftValidator(k)
-	v.UpdateValidatorSet(validatorSet)
+	v.UpdateValidatorSet(validators)
 
 	e := &PbftConsensusEngine{
 		logger:            util.LoggerWithPrefixes("ConsensusEngine"),
+		block:             b,
 		state:             types.NewAtomicNumber[PbftState](Initialized),
 		view:              types.NewAtomicNumber[uint64](0),
+		sequence:          b.Header.Height,
 		processor:         p,
 		validator:         v,
-		quorum:            (2 * len(validatorSet) / 3) + 1,
+		quorum:            (2 * len(validators) / 3) + 1,
 		prepareVotes:      types.NewAtomicMap[types.Address, *PbftPrepareMessage](),
 		commitVotes:       types.NewAtomicMap[types.Address, *PbftCommitMessage](),
 		viewChangeVotes:   types.NewAtomicMap[types.Address, *PbftViewChangeMessage](),
 		viewChangeTimeout: 5 * time.Second,
-		finalizedBlockCh:  finalizedBlockCh,
-		externalMsgCh:     externalMsgCh,
+		finalizedBlockCh:  make(chan *block.Block, 1),
+		outgoingMsgCh:     make(chan network.ConsensusMessage, 100),
 		internalMsgCh:     make(chan network.ConsensusMessage, 100),
 		closeCh:           make(chan struct{}),
 	}
@@ -117,6 +117,10 @@ func (e *PbftConsensusEngine) StartEngine() {
 }
 
 func (e *PbftConsensusEngine) HandleMessage(m network.ConsensusMessage) {
+	if e.state.Gte(Finalized) {
+		return
+	}
+
 	select {
 	case <-e.closeCh:
 		return
@@ -130,12 +134,22 @@ func (e *PbftConsensusEngine) HandleMessage(m network.ConsensusMessage) {
 	}
 }
 
+func (e *PbftConsensusEngine) OutgoingMessage() <-chan network.ConsensusMessage {
+	return e.outgoingMsgCh
+}
+
+func (e *PbftConsensusEngine) FinalizedBlock() <-chan *block.Block {
+	return e.finalizedBlockCh
+}
+
 func (e *PbftConsensusEngine) StopEngine() {
 	e.closeOnce.Do(func() {
 		_ = e.logger.Log("msg", "stoping consensus engine", "state", e.state.Get(), "view", e.view.Get(), "sequence", e.sequence)
 
 		close(e.closeCh)
 		close(e.internalMsgCh)
+		close(e.outgoingMsgCh)
+		close(e.finalizedBlockCh)
 
 		e.state.Set(Terminated)
 		_ = e.logger.Log("msg", "changed state", "state", e.state.Get(), "view", e.view.Get(), "sequence", e.sequence)
@@ -144,7 +158,7 @@ func (e *PbftConsensusEngine) StopEngine() {
 }
 
 func (e *PbftConsensusEngine) handlePrePrepareMessage(m *PbftPrePrepareMessage) (network.ConsensusMessage, error) {
-	if !e.state.Eq(Idle) {
+	if e.state.Gte(PrePrepared) {
 		return nil, nil
 	}
 
@@ -160,8 +174,6 @@ func (e *PbftConsensusEngine) handlePrePrepareMessage(m *PbftPrePrepareMessage) 
 		return nil, err
 	}
 
-	e.block = m.Block
-	e.sequence = m.Block.Header.Height
 	e.state.Set(PrePrepared)
 	_ = e.logger.Log("msg", "changed state", "state", e.state.Get(), "view", e.view.Get(), "sequence", e.sequence)
 
@@ -179,7 +191,12 @@ func (e *PbftConsensusEngine) handlePrePrepareMessage(m *PbftPrePrepareMessage) 
 }
 
 func (e *PbftConsensusEngine) handlePrepareMessage(m *PbftPrepareMessage) (network.ConsensusMessage, error) {
-	if !e.state.Eq(PrePrepared) {
+	if e.state.Gte(Prepared) {
+		return nil, nil
+	}
+
+	from := m.Address()
+	if e.prepareVotes.Exists(from) {
 		return nil, nil
 	}
 
@@ -196,36 +213,33 @@ func (e *PbftConsensusEngine) handlePrepareMessage(m *PbftPrepareMessage) (netwo
 		return nil, fmt.Errorf("received prepare vote for incorrect block hash")
 	}
 
-	from := m.Address()
-	if e.prepareVotes.Exists(from) {
-		return nil, nil
-	}
-
 	e.prepareVotes.Put(from, m)
 	voteCount := e.prepareVotes.Len()
 	countLogMsg := fmt.Sprintf("(%d/%d)", voteCount, e.quorum)
 	_ = e.logger.Log("msg", "received prepare vote", "address", from.ShortString(8), "vote_count", countLogMsg, "view", e.view.Get(), "sequence", e.sequence)
 
-	e.lock.Lock()
-	defer e.lock.Unlock()
-
-	if voteCount >= e.quorum && e.state.Eq(PrePrepared) {
-		e.state.Set(Prepared)
-		_ = e.logger.Log("msg", "changed state", "state", e.state.Get(), "view", e.view.Get(), "sequence", e.sequence)
-
+	if voteCount >= e.quorum {
 		msg := NewPbftCommitMessage(m.View, m.Sequence, bh)
 		if err = e.validator.Sign(msg); err != nil {
 			return nil, err
 		}
 
+		e.state.Set(Prepared)
+		_ = e.logger.Log("msg", "changed state", "state", e.state.Get(), "view", e.view.Get(), "sequence", e.sequence)
+
 		return msg, nil
 	}
 
-	return m, nil
+	return nil, nil
 }
 
 func (e *PbftConsensusEngine) handleCommitMessage(m *PbftCommitMessage) (network.ConsensusMessage, error) {
-	if !e.state.Eq(Prepared) {
+	if e.state.Gte(Committed) {
+		return nil, nil
+	}
+
+	from := m.Address()
+	if e.commitVotes.Exists(from) {
 		return nil, nil
 	}
 
@@ -242,43 +256,31 @@ func (e *PbftConsensusEngine) handleCommitMessage(m *PbftCommitMessage) (network
 		return nil, fmt.Errorf("received commit vote for incorrect block hash")
 	}
 
-	from := m.Address()
-	if e.commitVotes.Exists(from) {
-		return nil, nil
-	}
-
 	e.commitVotes.Put(from, m)
 	voteCount := e.commitVotes.Len()
 	countLogMsg := fmt.Sprintf("(%d/%d)", voteCount, e.quorum)
 	_ = e.logger.Log("msg", "received commit vote", "address", from.ShortString(8), "vote_count", countLogMsg, "view", e.view.Get(), "sequence", e.sequence)
 
-	e.lock.Lock()
-	defer e.lock.Unlock()
-
 	if voteCount >= e.quorum && e.state.Eq(Prepared) {
+		_ = e.logger.Log("msg", "block committed", "address", e.validator.PublicKey().Address().ShortString(8))
 		e.state.Set(Committed)
 		_ = e.logger.Log("msg", "changed state", "state", e.state.Get(), "view", e.view.Get(), "sequence", e.sequence)
 
 		e.finalizeEngine()
 	}
-
-	if e.state.Eq(Committed) {
-		return nil, nil
-	}
-
-	return m, nil
+	return nil, nil
 }
 
 func (e *PbftConsensusEngine) handleViewChangeMessage(m *PbftViewChangeMessage) (network.ConsensusMessage, error) {
-	if e.state.Eq(Finalized) {
+	if e.state.Gte(Finalized) {
 		return nil, nil
 	}
 
-	if err := e.validator.ProcessConsensusMessage(m); err != nil {
-		return nil, err
+	if e.view.Gte(m.NewView) {
+		return nil, nil
 	}
 
-	if m.NewView <= e.view.Get() {
+	if e.viewChangeVotes.Len() >= e.quorum {
 		return nil, nil
 	}
 
@@ -287,45 +289,43 @@ func (e *PbftConsensusEngine) handleViewChangeMessage(m *PbftViewChangeMessage) 
 		return nil, nil
 	}
 
+	if err := e.validator.ProcessConsensusMessage(m); err != nil {
+		return nil, err
+	}
+
 	e.viewChangeVotes.Put(from, m)
 	voteCount := e.viewChangeVotes.Len()
 	countLogMsg := fmt.Sprintf("(%d/%d)", voteCount, e.quorum)
-	_ = e.logger.Log("msg", "received view-change vote", "address", from.ShortString(8), "vote_count", countLogMsg, "view", e.view.Get(), "sequence", e.sequence)
+	_ = e.logger.Log("msg", "received view-change vote", "address", from.ShortString(8), "vote_count", countLogMsg, "new_view", m.NewView, "sequence", e.sequence)
 
 	newLeader := e.validator.GetLeader(e.sequence, m.NewView)
 	ourAddr := e.validator.PublicKey().Address()
 
-	e.lock.Lock()
-	defer e.lock.Unlock()
-
 	if ourAddr.Equal(newLeader) && e.viewChangeVotes.Len() >= e.quorum {
-		if m.NewView > e.view.Get() {
-			e.view.Set(m.NewView)
-			_ = e.logger.Log("msg", "elected new leader", "new_view", m.NewView, "sequence", e.sequence)
-
-			msg := NewPbftNewViewMessage(m.NewView, e.sequence, e.block, e.validator.PublicKey(), e.viewChangeVotes.Values())
-			if err := e.validator.Sign(msg); err != nil {
-				return nil, err
-			}
-
-			return msg, nil
+		msg := NewPbftNewViewMessage(m.NewView, e.sequence, e.block, e.validator.PublicKey(), e.viewChangeVotes.Values())
+		if err := e.validator.Sign(msg); err != nil {
+			return nil, err
 		}
+
+		_ = e.logger.Log("msg", "elected new leader", "new_view", m.NewView, "sequence", e.sequence)
+
+		return msg, nil
 	}
 
-	return m, nil
+	return nil, nil
 }
 
 func (e *PbftConsensusEngine) handleNewViewMessage(m *PbftNewViewMessage) (network.ConsensusMessage, error) {
-	if e.state.Eq(Finalized) {
+	if e.state.Gte(Finalized) {
+		return nil, nil
+	}
+
+	if e.view.Gte(m.NewView) {
 		return nil, nil
 	}
 
 	if err := e.validator.ProcessConsensusMessage(m); err != nil {
 		return nil, err
-	}
-
-	if m.NewView <= e.view.Get() {
-		return nil, nil
 	}
 
 	if len(m.ViewChangeMessages) < e.quorum {
@@ -338,9 +338,8 @@ func (e *PbftConsensusEngine) handleNewViewMessage(m *PbftNewViewMessage) (netwo
 		}
 	}
 
-	_ = e.logger.Log("msg", "accepted new view", "new_view", m.NewView, "sequence", e.sequence)
-
 	e.view.Set(m.NewView)
+	_ = e.logger.Log("msg", "accepted new view", "new_view", m.NewView, "sequence", e.sequence)
 	e.prepareVotes.Clear()
 	e.commitVotes.Clear()
 	e.viewChangeVotes.Clear()
@@ -358,7 +357,6 @@ func (e *PbftConsensusEngine) run() {
 		select {
 		case <-e.closeCh:
 			_ = e.logger.Log("msg", "exit engine loop", "state", e.state.Get(), "view", e.view.Get(), "sequence", e.sequence)
-
 			return
 		case <-timer.C:
 			_ = e.logger.Log("msg", "consensus timeout", "view", e.view.Get(), "sequence", e.sequence)
@@ -406,7 +404,7 @@ func (e *PbftConsensusEngine) run() {
 			}
 
 			if rm != nil {
-				e.sendToExternal(rm)
+				e.sendToOutgoing(rm)
 			}
 		}
 	}
@@ -431,9 +429,11 @@ func (e *PbftConsensusEngine) finalizeEngine() {
 
 		valSet := e.validator.GetValidatorSets()
 		if err := e.block.Seal(cvs, valSet); err != nil {
-			_ = e.logger.Log("msg", "block_seal_failed", "view", e.view.Get(), "sequence", e.sequence, "err", err)
+			_ = e.logger.Log("msg", "failed block sealing", "view", e.view.Get(), "sequence", e.sequence, "err", err)
 			// e.startViewChange()
 			return
+		} else {
+			_ = e.logger.Log("msg", "successed block sealing", "view", e.view.Get(), "sequence", e.sequence)
 		}
 
 		select {
@@ -446,22 +446,8 @@ func (e *PbftConsensusEngine) finalizeEngine() {
 
 		_ = e.logger.Log("msg", "finalized consensus", "state", e.state.Get(), "view", e.view.Get(), "sequence", e.sequence)
 
-		e.StopEngine()
+		// e.StopEngine()
 	})
-}
-
-func (e *PbftConsensusEngine) sendToExternal(m network.ConsensusMessage) {
-	select {
-	case <-e.closeCh:
-		return
-	default:
-	}
-
-	select {
-	case e.externalMsgCh <- m:
-	case <-e.closeCh:
-		return
-	}
 }
 
 func (e *PbftConsensusEngine) startViewChange() error {
@@ -474,7 +460,21 @@ func (e *PbftConsensusEngine) startViewChange() error {
 		return err
 	}
 
-	e.sendToExternal(msg)
+	e.sendToOutgoing(msg)
 
 	return nil
+}
+
+func (e *PbftConsensusEngine) sendToOutgoing(m network.ConsensusMessage) {
+	select {
+	case <-e.closeCh:
+		return
+	default:
+	}
+
+	select {
+	case e.outgoingMsgCh <- m:
+	case <-e.closeCh:
+		return
+	}
 }

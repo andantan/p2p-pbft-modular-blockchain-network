@@ -28,21 +28,6 @@ func GenerateTestPbftPrePrepareMessage(t *testing.T, view uint64) (*PbftPrePrepa
 	return msg, privKey
 }
 
-func GenerateTestPbftPrePrepareMessageWithSequence(t *testing.T, view, sequence uint64) (*PbftPrePrepareMessage, *crypto.PrivateKey) {
-	t.Helper()
-
-	privKey, _ := crypto.GeneratePrivateKey()
-	b := block.GenerateRandomTestBlockWithHeight(t, 10, sequence)
-	msg := NewPbftPrePrepareMessage(view, sequence, b, privKey.PublicKey())
-
-	assert.NoError(t, msg.Sign(privKey))
-	assert.NotNil(t, msg.PublicKey)
-	assert.NotNil(t, msg.Signature)
-	assert.NoError(t, msg.Verify())
-
-	return msg, privKey
-}
-
 func GenerateTestPbftPrepareMessage(t *testing.T, view uint64) (*PbftPrepareMessage, *crypto.PrivateKey) {
 	t.Helper()
 
@@ -93,7 +78,11 @@ func GenerateTestPbftViewChangeMessage(t *testing.T, view, sequence uint64) (*Pb
 func GenerateTestPbftNewViewMessageWithKey(t *testing.T, view, sequence uint64, vcmN int, k *crypto.PrivateKey) (*PbftNewViewMessage, *crypto.PrivateKey) {
 	t.Helper()
 
-	prePrepareMsg, _ := GenerateTestPbftPrePrepareMessageWithSequence(t, view, sequence)
+	//prePrepareMsg, _ := GenerateTestPbftPrePrepareMessageWithSequence(t, view, sequence)
+	//
+	//privKey, _ := crypto.GeneratePrivateKey()
+	b := block.GenerateRandomTestBlockWithHeightAndKey(t, 10, sequence, k)
+	//msg := NewPbftPrePrepareMessage(view, sequence, b, privKey.PublicKey())
 
 	vcms := make([]*PbftViewChangeMessage, vcmN)
 
@@ -101,13 +90,15 @@ func GenerateTestPbftNewViewMessageWithKey(t *testing.T, view, sequence uint64, 
 		vcm, _ := GenerateTestPbftViewChangeMessage(t, view, sequence)
 		vcms[i] = vcm
 	}
+	//
+	//msg := &PbftNewViewMessage{
+	//	NewView:            view,
+	//	Sequence:           sequence,
+	//	ViewChangeMessages: vcms,
+	//	PrePrepareMessage:  prePrepareMsg,
+	//}
 
-	msg := &PbftNewViewMessage{
-		NewView:            view,
-		Sequence:           sequence,
-		ViewChangeMessages: vcms,
-		PrePrepareMessage:  prePrepareMsg,
-	}
+	msg := NewPbftNewViewMessage(view, sequence, b, k.PublicKey(), vcms)
 	assert.NoError(t, msg.Sign(k))
 	assert.NotNil(t, msg.PublicKey)
 	assert.NotNil(t, msg.Signature)
@@ -181,7 +172,7 @@ func GenerateTestPbftProposer(t *testing.T) *PbftProposer {
 	return p
 }
 
-func GenerateTestPbftConsensusEngine(t *testing.T, valN, bcH int) (*core.Blockchain, []*crypto.PrivateKey, *PbftConsensusEngine, chan *block.Block, chan network.ConsensusMessage) {
+func GenerateTestPbftConsensusEngine(t *testing.T, valN, bcH int) (*core.Blockchain, []*crypto.PrivateKey, *PbftConsensusEngine, <-chan *block.Block, <-chan network.ConsensusMessage) {
 	t.Helper()
 
 	keys := make([]*crypto.PrivateKey, valN)
@@ -191,22 +182,62 @@ func GenerateTestPbftConsensusEngine(t *testing.T, valN, bcH int) (*core.Blockch
 		addrs[i] = keys[i].PublicKey().Address()
 	}
 
-	finalizedBlockCh := make(chan *block.Block, 1)
-	externalMsgCh := make(chan network.ConsensusMessage, 100)
 	bc, p := core.GenerateTestBlockchainAndProcessor(t)
 
 	core.AddTestBlocksToBlockchain(t, bc, uint64(bcH))
 	signer := util.RandomUint64WithMaximun(valN)
-	e := NewPbftConsensusEngine(keys[signer], p, addrs, finalizedBlockCh, externalMsgCh)
+	ph, err := bc.GetCurrentHeader()
+	assert.NoError(t, err)
+	k := keys[signer]
+	b := block.GenerateRandomTestBlockWithPrevHeaderAndKey(t, ph, 1<<4, k)
+	e := NewPbftConsensusEngine(k, b, p, addrs)
+	finalizedBlockCh := e.FinalizedBlock()
+	outgoingMsgCh := e.OutgoingMessage()
 
 	assert.NotNil(t, e)
 	assert.True(t, e.state.Eq(Initialized))
 	assert.True(t, e.view.Eq(uint64(0)))
-	assert.Equal(t, e.quorum, 2*len(addrs)/3+1)
-	assert.Equal(t, e.sequence, uint64(0))
-	assert.Nil(t, e.block)
+	assert.NotNil(t, finalizedBlockCh)
+	assert.NotNil(t, e.block)
+	assert.NotNil(t, outgoingMsgCh)
 	assert.NotNil(t, e.closeCh)
 	assert.NotNil(t, e.internalMsgCh)
+	assert.Equal(t, e.sequence, b.Header.Height)
+	assert.Equal(t, e.quorum, 2*len(addrs)/3+1)
 
-	return bc, keys, e, finalizedBlockCh, externalMsgCh
+	return bc, keys, e, finalizedBlockCh, outgoingMsgCh
+}
+
+func GenerateTestPbftMultipleConsensusEngine(t *testing.T, valN, bcH int) ([]*crypto.PrivateKey, []*PbftConsensusEngine) {
+	t.Helper()
+
+	keys := make([]*crypto.PrivateKey, valN)
+	addrs := make([]types.Address, valN)
+	for i := 0; i < valN; i++ {
+		keys[i], _ = crypto.GeneratePrivateKey()
+		addrs[i] = keys[i].PublicKey().Address()
+	}
+
+	bc, p := core.GenerateTestBlockchainAndProcessor(t)
+	core.AddTestBlocksToBlockchain(t, bc, uint64(bcH))
+	ph, err := bc.GetCurrentHeader()
+	assert.NoError(t, err)
+	leader := GetLeaderFromTestValidators(t, keys, 0, uint64(bcH+1))
+	b := block.GenerateRandomTestBlockWithPrevHeaderAndKey(t, ph, 1<<4, leader)
+
+	engines := make([]*PbftConsensusEngine, valN)
+	for i := 0; i < valN; i++ {
+		// _, cp := core.CopyTestBlockchainAndProcessor(t, bc)
+		cb, err := block.NewBlock(b.Header, b.Body)
+		assert.NoError(t, err)
+		assert.NoError(t, cb.Sign(leader))
+		engines[i] = NewPbftConsensusEngine(keys[i], cb, p, addrs)
+		assert.NotNil(t, engines[i])
+		assert.NotNil(t, engines[i].block)
+		assert.Nil(t, engines[i].block.Tail)
+	}
+
+	assert.Equal(t, valN, len(engines))
+
+	return keys, engines
 }

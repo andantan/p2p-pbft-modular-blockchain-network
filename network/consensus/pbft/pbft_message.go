@@ -644,6 +644,10 @@ func (m *PbftNewViewMessage) Hash() (types.Hash, error) {
 }
 
 func (m *PbftNewViewMessage) Sign(privKey *crypto.PrivateKey) error {
+	if err := m.PrePrepareMessage.Sign(privKey); err != nil {
+		return err
+	}
+
 	hash, err := m.Hash()
 	if err != nil {
 		return err

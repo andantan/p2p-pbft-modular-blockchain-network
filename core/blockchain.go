@@ -127,7 +127,7 @@ func (bc *Blockchain) AddBlock(b *block.Block) error {
 }
 
 func (bc *Blockchain) Rollback(from uint64) error {
-	ch := bc.GetCurrentHeight()
+	ch := bc.blockStorer.CurrentHeight()
 
 	if ch < from {
 		return nil

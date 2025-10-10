@@ -244,6 +244,22 @@ func GenerateRandomTestBlockWithHeight(t *testing.T, txCount int, h uint64) *Blo
 	return block
 }
 
+func GenerateRandomTestBlockWithHeightAndKey(t *testing.T, txCount int, h uint64, k *crypto.PrivateKey) *Block {
+	t.Helper()
+
+	body := GenerateRandomTestBody(t, txCount)
+	header := GenerateRandomTestHeaderWithBodyAndHeight(t, body, h)
+
+	block, err := NewBlock(header, body)
+	assert.NoError(t, err)
+
+	assert.NoError(t, block.Sign(k))
+	assert.NotNil(t, block.Signature)
+	assert.NoError(t, block.Verify())
+
+	return block
+}
+
 func GenerateRandomTestBlockWithPrevHeader(t *testing.T, h *Header, txCount int) *Block {
 	t.Helper()
 
@@ -268,6 +284,7 @@ func GenerateRandomTestBlockWithPrevHeaderAndKey(t *testing.T, h *Header, txCoun
 	assert.NoError(t, b.Sign(k))
 	assert.NotNil(t, b.Signature)
 	assert.NoError(t, b.Verify())
+	assert.Nil(t, b.Tail)
 
 	return b
 }
