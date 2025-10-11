@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package block;
-option go_package = "github.com/andantan/p2p-pbft-modular-blockchain-network/proto/core/block";
+option go_package = "github.com/andantan/modular-blockchain/proto/core/block";
 
 message CommitVote {
   bytes digest = 1;

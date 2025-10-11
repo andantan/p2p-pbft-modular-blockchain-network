@@ -90,7 +90,7 @@ const file_proto_network_protocol_tcp_handshake_proto_rawDesc = "" +
 	"\n" +
 	"public_key\x18\x01 \x01(\fR\tpublicKey\x12\x19\n" +
 	"\bnet_addr\x18\x02 \x01(\tR\anetAddr\x12\x1c\n" +
-	"\tsignature\x18\x03 \x01(\fR\tsignatureBTZRgithub.com/andantan/p2p-pbft-modular-blockchain-network/proto/network/protocol/tcpb\x06proto3"
+	"\tsignature\x18\x03 \x01(\fR\tsignatureBCZAgithub.com/andantan/modular-blockchain/proto/network/protocol/tcpb\x06proto3"
 
 var (
 	file_proto_network_protocol_tcp_handshake_proto_rawDescOnce sync.Once

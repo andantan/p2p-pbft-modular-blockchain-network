@@ -137,7 +137,7 @@ const file_proto_core_block_tail_proto_rawDesc = "" +
 	"public_key\x18\x02 \x01(\fR\tpublicKey\x12\x1c\n" +
 	"\tsignature\x18\x03 \x01(\fR\tsignature\"<\n" +
 	"\x04Tail\x124\n" +
-	"\fcommit_votes\x18\x01 \x03(\v2\x11.block.CommitVoteR\vcommitVotesBJZHgithub.com/andantan/p2p-pbft-modular-blockchain-network/proto/core/blockb\x06proto3"
+	"\fcommit_votes\x18\x01 \x03(\v2\x11.block.CommitVoteR\vcommitVotesB9Z7github.com/andantan/modular-blockchain/proto/core/blockb\x06proto3"
 
 var (
 	file_proto_core_block_tail_proto_rawDescOnce sync.Once

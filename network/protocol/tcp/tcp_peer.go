@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/andantan/modular-blockchain/codec"
 	"github.com/andantan/modular-blockchain/crypto"
-	"github.com/andantan/modular-blockchain/network/protocol"
+	"github.com/andantan/modular-blockchain/network/message"
 	"github.com/andantan/modular-blockchain/types"
 	"github.com/andantan/modular-blockchain/util"
 	"github.com/go-kit/log"
@@ -34,7 +34,7 @@ type TcpPeer struct {
 	netAddr   string
 	conn      net.Conn
 
-	msgCh chan protocol.Raw
+	msgCh chan message.RawMessage
 
 	closeCh   chan struct{}
 	closeOnce sync.Once
@@ -45,7 +45,7 @@ func NewTcpPeer(conn net.Conn) *TcpPeer {
 		logger:  util.LoggerWithPrefixes("Peer"),
 		state:   types.NewAtomicNumber[TcpPeerState](Initialized),
 		conn:    conn,
-		msgCh:   make(chan protocol.Raw, 100),
+		msgCh:   make(chan message.RawMessage, 100),
 		closeCh: make(chan struct{}),
 	}
 }
@@ -121,7 +121,7 @@ func (p *TcpPeer) NetAddr() string {
 	return p.netAddr
 }
 
-func (p *TcpPeer) ConsumeRawMessage() <-chan protocol.Raw {
+func (p *TcpPeer) ConsumeRawMessage() <-chan message.RawMessage {
 	return p.msgCh
 }
 

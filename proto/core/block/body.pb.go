@@ -71,7 +71,7 @@ const file_proto_core_block_body_proto_rawDesc = "" +
 	"\n" +
 	"\x1bproto/core/block/body.proto\x12\x05block\x1a\"proto/core/block/transaction.proto\">\n" +
 	"\x04Body\x126\n" +
-	"\ftransactions\x18\x01 \x03(\v2\x12.block.TransactionR\ftransactionsBJZHgithub.com/andantan/p2p-pbft-modular-blockchain-network/proto/core/blockb\x06proto3"
+	"\ftransactions\x18\x01 \x03(\v2\x12.block.TransactionR\ftransactionsB9Z7github.com/andantan/modular-blockchain/proto/core/blockb\x06proto3"
 
 var (
 	file_proto_core_block_body_proto_rawDescOnce sync.Once

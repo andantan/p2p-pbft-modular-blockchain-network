@@ -3,10 +3,9 @@ package tcp
 import (
 	"context"
 	"errors"
-	"github.com/andantan/modular-blockchain/codec"
+	"fmt"
 	"github.com/andantan/modular-blockchain/crypto"
-	"github.com/andantan/modular-blockchain/network"
-	"github.com/andantan/modular-blockchain/network/protocol"
+	"github.com/andantan/modular-blockchain/network/message"
 	"github.com/andantan/modular-blockchain/types"
 	"github.com/andantan/modular-blockchain/util"
 	"github.com/go-kit/log"
@@ -25,27 +24,29 @@ type TcpNode struct {
 	pubKey  *crypto.PublicKey
 	address types.Address
 
-	peerMap *types.AtomicMap[types.Address, *TcpPeer]
+	peerMap  *types.AtomicMap[types.Address, *TcpPeer]
+	maxPeers int
 
-	outgoingMsgCh chan protocol.Raw
+	outgoingMsgCh chan message.RawMessage
 	closeCh       chan struct{}
 
 	closeOnce sync.Once
 }
 
-func NewTcpNode(privKey *crypto.PrivateKey, listenAddr string) *TcpNode {
+func NewTcpNode(privKey *crypto.PrivateKey, listenAddr string, maxPeers int) *TcpNode {
 	t := &TcpNode{
 		listenAddr:    listenAddr,
 		protocol:      "tcp",
 		privKey:       privKey,
 		pubKey:        privKey.PublicKey(),
 		address:       privKey.PublicKey().Address(),
-		outgoingMsgCh: make(chan protocol.Raw, 1000),
+		outgoingMsgCh: make(chan message.RawMessage, 1000),
 		closeCh:       make(chan struct{}),
 		peerMap:       types.NewAtomicMap[types.Address, *TcpPeer](),
+		maxPeers:      maxPeers,
 	}
 
-	t.logger = util.LoggerWithPrefixes("Node", "address", t.address.ShortString(8), "listen-addr", t.listenAddr)
+	t.logger = util.LoggerWithPrefixes("Node", "net_addr", t.listenAddr, "address", t.address.ShortString(8))
 
 	return t
 }
@@ -57,14 +58,18 @@ func (n *TcpNode) Listen() {
 		panic(err)
 	}
 
-	_ = n.logger.Log("msg", "tcp listening", "net-addr", n.listenAddr)
+	_ = n.logger.Log("msg", "tcp listening", "net_addr", n.listenAddr)
 	n.listener = ln
 
 	go n.acceptLoop()
 }
 
 func (n *TcpNode) Connect(address string) error {
-	_ = n.logger.Log("msg", "connecting to peer", "net_address", address)
+	if n.peerMap.Len() >= n.maxPeers {
+		return fmt.Errorf("max peers (%d) reached, cannot connect to %s", n.maxPeers, address)
+	}
+
+	_ = n.logger.Log("msg", "connecting to peer", "peer_net_addr", address)
 
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
@@ -76,20 +81,15 @@ func (n *TcpNode) Connect(address string) error {
 	return nil
 }
 
-func (n *TcpNode) ConsumeRawMessage() <-chan protocol.Raw {
+func (n *TcpNode) ConsumeRawMessage() <-chan message.RawMessage {
 	return n.outgoingMsgCh
 }
 
-func (n *TcpNode) Broadcast(msg network.Message) error {
-	payload, err := codec.EncodeProto(msg)
-	if err != nil {
-		return err
-	}
-
+func (n *TcpNode) Broadcast(payload []byte) error {
 	n.peerMap.Range(func(addr types.Address, peer *TcpPeer) bool {
 		go func(p *TcpPeer) {
-			if e := p.Send(payload); err != nil {
-				_ = n.logger.Log("error", "failed to send message to peer", "peer_net_addr", p.NetAddr(), "peer_address", p.Address(), "err", e)
+			if err := p.Send(payload); err != nil {
+				_ = n.logger.Log("error", "failed to send message to peer", "peer_net_addr", p.NetAddr(), "peer_address", p.Address(), "err", err)
 			}
 		}(peer)
 		return true
@@ -98,12 +98,18 @@ func (n *TcpNode) Broadcast(msg network.Message) error {
 	return nil
 }
 
+func (n *TcpNode) Peers() []types.Address {
+	return n.peerMap.Keys()
+}
+
 func (n *TcpNode) Disconnect(addr types.Address) {
 	peer, ok := n.peerMap.Get(addr)
 	if !ok {
 		return
 	}
 	peer.Close()
+	connsMsg := fmt.Sprintf("(%d/%d)", n.peerMap.Len(), n.maxPeers)
+	_ = n.logger.Log("msg", "peer disconnected", "connections", connsMsg, "peer_net_addr", peer.NetAddr(), "peer_address", peer.Address().ShortString(8))
 }
 
 func (n *TcpNode) Close() {
@@ -155,7 +161,13 @@ func (n *TcpNode) acceptLoop() {
 				return
 			}
 
-			_ = n.logger.Log("msg", "new connection invoked. starting message", "net-addr", conn.RemoteAddr())
+			if n.peerMap.Len() >= n.maxPeers {
+				_ = n.logger.Log("msg", "max peers reached, rejecting new connection", "peer_net_addr", conn.RemoteAddr())
+				_ = conn.Close()
+				continue
+			}
+
+			_ = n.logger.Log("msg", "new connection invoked. starting handshaking", "peer_net_addr", conn.RemoteAddr())
 			go n.handshakeAndValidate(conn)
 
 		case err := <-errCh:
@@ -221,7 +233,8 @@ func (n *TcpNode) handshakeAndValidate(conn net.Conn) {
 		return
 	}
 
-	_ = n.logger.Log("msg", "peer handshaking finished. send peer to newPeerCh", "net-addr", peer.NetAddr(), "address", peer.Address().ShortString(8))
+	connsMsg := fmt.Sprintf("(%d/%d)", n.peerMap.Len(), n.maxPeers)
+	_ = n.logger.Log("msg", "peer handshaking successed", "connections", connsMsg, "peer_net_addr", peer.NetAddr(), "peer_address", peer.Address().ShortString(8))
 
 	go peer.Read()
 	go n.forwardMessages(peer)

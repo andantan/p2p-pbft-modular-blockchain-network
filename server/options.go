@@ -27,14 +27,18 @@ func (o *NetworkOptions) WithNode(maxPeers int, node protocol.Node) *NetworkOpti
 	return o
 }
 
-func (o *NetworkOptions) WithProvider(provider provider.PeerProvider) *NetworkOptions {
-	o.Provider = provider
+func (o *NetworkOptions) WithProvider(p provider.PeerProvider) *NetworkOptions {
+	o.Provider = p
 	return o
 }
 
-func (o *NetworkOptions) WithApiServer(apiServer api.ApiServer) *NetworkOptions {
-	o.ApiServer = apiServer
+func (o *NetworkOptions) WithApiServer(s api.ApiServer) *NetworkOptions {
+	o.ApiServer = s
 	return o
+}
+
+func (o *NetworkOptions) IsFulFilled() bool {
+	return o.MaxPeers > 0 && o.Node != nil && o.ApiServer != nil && o.Provider == nil
 }
 
 type BlockchainOptions struct {
@@ -46,13 +50,90 @@ type BlockchainOptions struct {
 	Processor          core.Processor
 }
 
+func NewBlockchainOptions() *BlockchainOptions {
+	return &BlockchainOptions{}
+}
+
+func (o *BlockchainOptions) WithStorer(s core.Storer) *BlockchainOptions {
+	o.Storer = s
+	return o
+}
+
+func (o *BlockchainOptions) WithChain(chain core.Chain, blockTime time.Duration) *BlockchainOptions {
+	o.Chain = chain
+	o.BlockTime = blockTime
+	return o
+}
+
+func (o *BlockchainOptions) WithMemoryPool(memoryPool core.VirtualMemoryPool, capacity int) *BlockchainOptions {
+	o.MemoryPool = memoryPool
+	o.MemoryPoolCapacity = capacity
+	return o
+}
+
+func (o *BlockchainOptions) WithProcessor(p core.Processor) *BlockchainOptions {
+	o.Processor = p
+	return o
+}
+
+func (o *BlockchainOptions) IsFulFilled() bool {
+	return o.Storer != nil && o.Chain != nil && o.BlockTime > 0 && o.MemoryPool != nil && o.MemoryPoolCapacity != 0 && o.Processor != nil
+}
+
 type ConsensusOptions struct {
-	Proposer consensus.Proposer
-	Engine   consensus.ConsensusEngine
+	Proposer              consensus.Proposer
+	ConsensusEngines      map[uint64]consensus.ConsensusEngine
+	ConsensusMessageCodec consensus.ConsensusMessageCodec
+}
+
+func NewConsensusOptions() *ConsensusOptions {
+	return &ConsensusOptions{
+		ConsensusEngines: make(map[uint64]consensus.ConsensusEngine),
+	}
+}
+
+func (o *ConsensusOptions) WithProposer(p consensus.Proposer) *ConsensusOptions {
+	o.Proposer = p
+	return o
+}
+
+func (o *ConsensusOptions) WithConsensusMessageCodec(c consensus.ConsensusMessageCodec) *ConsensusOptions {
+	o.ConsensusMessageCodec = c
+	return o
+}
+
+func (o *ConsensusOptions) IsFulFilled() bool {
+	return o.Proposer != nil && o.ConsensusEngines != nil && o.ConsensusMessageCodec != nil
 }
 
 type ServerOptions struct {
 	PrivateKey    *crypto.PrivateKey
 	ListenAddr    string
 	ApiListenAddr string
+	IsValidator   bool
+}
+
+func NewServerOptions(isValidator bool) *ServerOptions {
+	return &ServerOptions{
+		IsValidator: isValidator,
+	}
+}
+
+func (o *ServerOptions) WithPrivateKey(k *crypto.PrivateKey) *ServerOptions {
+	o.PrivateKey = k
+	return o
+}
+
+func (o *ServerOptions) WithListenAddr(listenAddr string) *ServerOptions {
+	o.ListenAddr = listenAddr
+	return o
+}
+
+func (o *ServerOptions) WithApiListenAddr(apiListenAddr string) *ServerOptions {
+	o.ApiListenAddr = apiListenAddr
+	return o
+}
+
+func (o *ServerOptions) IsFulFilled() bool {
+	return o.PrivateKey != nil && o.ListenAddr != "" && o.ApiListenAddr != ""
 }

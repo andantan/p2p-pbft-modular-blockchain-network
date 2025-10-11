@@ -24,5 +24,5 @@ func GenerateTestTcpNode(t *testing.T, listenAddr string) *TcpNode {
 	privKeyA, err := crypto.GeneratePrivateKey()
 	assert.NoError(t, err)
 
-	return NewTcpNode(privKeyA, listenAddr)
+	return NewTcpNode(privKeyA, listenAddr, 5)
 }
