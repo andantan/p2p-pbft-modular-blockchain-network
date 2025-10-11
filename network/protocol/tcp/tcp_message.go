@@ -5,26 +5,26 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/crypto"
-	pb "github.com/andantan/p2p-pbft-modular-blockchain-network/proto/network/protocol/tcp"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/types"
+	"github.com/andantan/modular-blockchain/crypto"
+	pb "github.com/andantan/modular-blockchain/proto/network/protocol/tcp"
+	"github.com/andantan/modular-blockchain/types"
 	"google.golang.org/protobuf/proto"
 )
 
-type TCPHandshakeMessage struct {
+type TcpHandshakeMessage struct {
 	PublicKey *crypto.PublicKey
 	NetAddr   string
 	Signature *crypto.Signature
 }
 
-func NewTCPHandshakeMessage(pubKey *crypto.PublicKey, netAddr string) *TCPHandshakeMessage {
-	return &TCPHandshakeMessage{
+func NewTcpHandshakeMessage(pubKey *crypto.PublicKey, netAddr string) *TcpHandshakeMessage {
+	return &TcpHandshakeMessage{
 		PublicKey: pubKey,
 		NetAddr:   netAddr,
 	}
 }
 
-func (h *TCPHandshakeMessage) Hash() (types.Hash, error) {
+func (h *TcpHandshakeMessage) Hash() (types.Hash, error) {
 	if h.PublicKey == nil {
 		return types.Hash{}, fmt.Errorf("cannot hash identity with nil public key")
 	}
@@ -37,7 +37,7 @@ func (h *TCPHandshakeMessage) Hash() (types.Hash, error) {
 	return hash, nil
 }
 
-func (h *TCPHandshakeMessage) Sign(privKey *crypto.PrivateKey) error {
+func (h *TcpHandshakeMessage) Sign(privKey *crypto.PrivateKey) error {
 	hash, err := h.Hash()
 
 	if err != nil {
@@ -54,12 +54,12 @@ func (h *TCPHandshakeMessage) Sign(privKey *crypto.PrivateKey) error {
 	return nil
 }
 
-func (h *TCPHandshakeMessage) Verify() error {
+func (h *TcpHandshakeMessage) Verify() error {
 	if h.Signature == nil {
-		return fmt.Errorf("TCPHandshakeMessage has no signature to verify")
+		return fmt.Errorf("TcpHandshakeMessage has no signature to verify")
 	}
 	if h.PublicKey == nil {
-		return fmt.Errorf("TCPHandshakeMessage has no public key to verify with")
+		return fmt.Errorf("TcpHandshakeMessage has no public key to verify with")
 	}
 
 	hash, err := h.Hash()
@@ -69,13 +69,13 @@ func (h *TCPHandshakeMessage) Verify() error {
 	}
 
 	if !h.Signature.Verify(h.PublicKey, hash.Bytes()) {
-		return fmt.Errorf("invalid TCPHandshakeMessage signature")
+		return fmt.Errorf("invalid TcpHandshakeMessage signature")
 	}
 
 	return nil
 }
 
-func (h *TCPHandshakeMessage) ToProto() (proto.Message, error) {
+func (h *TcpHandshakeMessage) ToProto() (proto.Message, error) {
 	return &pb.TcpHandshakeMessage{
 		PublicKey: h.PublicKey.Bytes(),
 		NetAddr:   h.NetAddr,
@@ -83,10 +83,10 @@ func (h *TCPHandshakeMessage) ToProto() (proto.Message, error) {
 	}, nil
 }
 
-func (h *TCPHandshakeMessage) FromProto(msg proto.Message) error {
+func (h *TcpHandshakeMessage) FromProto(msg proto.Message) error {
 	p, ok := msg.(*pb.TcpHandshakeMessage)
 	if !ok {
-		return errors.New("invalid proto message type for TCPHandshakeMessage")
+		return errors.New("invalid proto message type for TcpHandshakeMessage")
 	}
 
 	var (
@@ -110,6 +110,26 @@ func (h *TCPHandshakeMessage) FromProto(msg proto.Message) error {
 	return nil
 }
 
-func (h *TCPHandshakeMessage) EmptyProto() proto.Message {
+func (h *TcpHandshakeMessage) EmptyProto() proto.Message {
 	return &pb.TcpHandshakeMessage{}
+}
+
+type TcpRawMessage struct {
+	from    types.Address
+	payload []byte
+}
+
+func NewTcpRawMessage(from types.Address, payload []byte) *TcpRawMessage {
+	return &TcpRawMessage{
+		from:    from,
+		payload: payload,
+	}
+}
+
+func (m *TcpRawMessage) From() types.Address {
+	return m.from
+}
+
+func (m *TcpRawMessage) Payload() []byte {
+	return m.payload
 }

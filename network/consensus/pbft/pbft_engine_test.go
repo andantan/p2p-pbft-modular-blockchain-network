@@ -1,31 +1,29 @@
 package pbft
 
 import (
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/core/block"
+	"github.com/andantan/modular-blockchain/core/block"
+	"github.com/andantan/modular-blockchain/network/message"
 	"github.com/stretchr/testify/assert"
+	"sync"
 	"testing"
 	"time"
 )
 
 func TestPbftConsensusEngine_HandlePrePrepare(t *testing.T) {
 	vc, ih := 4, 5
-	bc, validatorKeys, engine, _, extCh := GenerateTestPbftConsensusEngine(t, vc, ih)
+	_, validatorKeys, engine, _, msgCh := GenerateTestPbftConsensusEngine(t, vc, ih)
 
 	leaderKey := GetLeaderFromTestValidators(t, validatorKeys, 0, uint64(ih+1))
-
-	ph, err := bc.GetCurrentHeader()
-	assert.NoError(t, err)
-
-	b := block.GenerateRandomTestBlockWithPrevHeaderAndKey(t, ph, 1<<3, leaderKey)
+	b := engine.block
 	ppMsg := NewPbftPrePrepareMessage(0, b.Header.Height, b, leaderKey.PublicKey())
 	assert.NoError(t, ppMsg.Sign(leaderKey))
 
-	engine.Start()
+	engine.StartEngine()
 
 	go engine.HandleMessage(ppMsg)
 
 	select {
-	case outgoingMsg := <-extCh:
+	case outgoingMsg := <-msgCh:
 		_, ok := outgoingMsg.(*PbftPrepareMessage)
 		assert.True(t, ok)
 		assert.True(t, engine.state.Eq(PrePrepared))
@@ -33,26 +31,35 @@ func TestPbftConsensusEngine_HandlePrePrepare(t *testing.T) {
 	case <-time.After(100 * time.Millisecond):
 		t.Fatal("engine does not send PrePrepareMessage to channel")
 	}
+
+	engine.StopEngine()
 }
 
 func TestPbftConsensusEngine_HandlePrepare(t *testing.T) {
 	// phase pre-prepare
 	vc, ih := 10, 6
-	bc, validatorKeys, engine, _, extCh := GenerateTestPbftConsensusEngine(t, vc, ih)
+	_, validatorKeys, engine, _, msgCh := GenerateTestPbftConsensusEngine(t, vc, ih)
 	leaderKey := GetLeaderFromTestValidators(t, validatorKeys, 0, uint64(ih))
-	ph, err := bc.GetCurrentHeader()
-	assert.NoError(t, err)
 
-	b := block.GenerateRandomTestBlockWithPrevHeaderAndKey(t, ph, 1<<3, leaderKey)
+	b := engine.block
 	ppMsg := NewPbftPrePrepareMessage(0, uint64(ih), b, leaderKey.PublicKey())
 	assert.NoError(t, ppMsg.Sign(leaderKey))
 
-	engine.Start()
+	engine.StartEngine()
 
-	go engine.HandleMessage(ppMsg)
+	var wg sync.WaitGroup
+	handler := func(msg message.ConsensusMessage) {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			engine.HandleMessage(msg)
+		}()
+	}
+
+	handler(ppMsg)
 
 	select {
-	case outgoingMsg := <-extCh:
+	case outgoingMsg := <-msgCh:
 		_, ok := outgoingMsg.(*PbftPrepareMessage)
 		assert.True(t, ok)
 		assert.True(t, engine.state.Eq(PrePrepared))
@@ -70,57 +77,57 @@ func TestPbftConsensusEngine_HandlePrepare(t *testing.T) {
 		pm := NewPbftPrepareMessage(0, uint64(ih), bh)
 		assert.NoError(t, pm.Sign(validatorKeys[i]))
 
-		go engine.HandleMessage(pm)
-
-		if i != engine.quorum-1 {
-			select {
-			case outgoingMsg := <-extCh:
-				_, ok := outgoingMsg.(*PbftPrepareMessage)
-				assert.True(t, ok)
-				assert.True(t, engine.state.Eq(PrePrepared))
-			case <-time.After(100 * time.Millisecond):
-				t.Fatal("engine does not send PrePrepareMessage to channel")
-			}
-		} else {
-			select {
-			case outgoingMsg := <-extCh:
-				_, ok := outgoingMsg.(*PbftCommitMessage)
-				assert.True(t, ok)
-				assert.True(t, engine.state.Eq(Prepared))
-
-			case <-time.After(100 * time.Millisecond):
-				t.Fatal("engine does not send PrePrepareMessage to channel")
-			}
-		}
+		handler(pm)
 	}
+
+	select {
+	case outgoingMsg := <-msgCh:
+		_, ok := outgoingMsg.(*PbftCommitMessage)
+		assert.True(t, ok)
+		assert.True(t, engine.state.Eq(Prepared))
+
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("engine does not send PrePrepareMessage to channel")
+	}
+
+	wg.Wait()
+
+	engine.StopEngine()
 }
 
 func TestPbftConsensusEngine_HandleCommit(t *testing.T) {
 	// phase pre-prepare
-	vc, ih := 10, 6
+	vc, ih := 15, 6
 	nh := ih + 1
-	bc, validatorKeys, engine, fbCh, extCh := GenerateTestPbftConsensusEngine(t, vc, ih)
+	_, validatorKeys, engine, fbCh, msgCh := GenerateTestPbftConsensusEngine(t, vc, ih)
 	leaderKey := GetLeaderFromTestValidators(t, validatorKeys, 0, uint64(nh))
-	ph, err := bc.GetCurrentHeader()
-	assert.NoError(t, err)
 
-	b := block.GenerateRandomTestBlockWithPrevHeaderAndKey(t, ph, 1<<3, leaderKey)
+	b := engine.block
 	height := b.Header.Height
 	ppMsg := NewPbftPrePrepareMessage(0, height, b, leaderKey.PublicKey())
 	assert.NoError(t, ppMsg.Sign(leaderKey))
 
-	engine.Start()
+	engine.StartEngine()
 
-	go engine.HandleMessage(ppMsg)
+	var wg sync.WaitGroup
+	handler := func(msg message.ConsensusMessage) {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			engine.HandleMessage(msg)
+		}()
+	}
+
+	handler(ppMsg)
 
 	select {
-	case outgoingMsg := <-extCh:
+	case outgoingMsg := <-msgCh:
 		_, ok := outgoingMsg.(*PbftPrepareMessage)
 		assert.True(t, ok)
 		assert.True(t, engine.state.Eq(PrePrepared))
 
 	case <-time.After(100 * time.Millisecond):
-		t.Fatal("engine does not send PrePrepareMessage to channel")
+		t.Fatal("engine does not send PrePrepareMessage to channel!")
 	}
 
 	// phase prepare
@@ -129,49 +136,28 @@ func TestPbftConsensusEngine_HandleCommit(t *testing.T) {
 	assert.NoError(t, err)
 
 	for i := 0; i < engine.quorum; i++ {
+		key := validatorKeys[i]
 		pm := NewPbftPrepareMessage(0, height, bh)
-		assert.NoError(t, pm.Sign(validatorKeys[i]))
+		assert.NoError(t, pm.Sign(key))
 
-		go engine.HandleMessage(pm)
+		handler(pm)
+	}
 
-		if i != engine.quorum-1 {
-			select {
-			case outgoingMsg := <-extCh:
-				_, ok := outgoingMsg.(*PbftPrepareMessage)
-				assert.True(t, ok)
-				assert.True(t, engine.state.Eq(PrePrepared))
-			case <-time.After(100 * time.Millisecond):
-				t.Fatal("engine does not send PrePrepareMessage to channel")
-			}
-		} else {
-			select {
-			case outgoingMsg := <-extCh:
-				_, ok := outgoingMsg.(*PbftCommitMessage)
-				assert.True(t, ok)
-				assert.True(t, engine.state.Eq(Prepared))
+	select {
+	case outgoingMsg := <-msgCh:
+		_, ok := outgoingMsg.(*PbftCommitMessage)
+		assert.True(t, ok)
+		assert.True(t, engine.state.Eq(Prepared))
 
-			case <-time.After(100 * time.Millisecond):
-				t.Fatal("engine does not send PrePrepareMessage to channel")
-			}
-		}
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("engine does not send PrePrepareMessage to channel")
 	}
 
 	for i := 0; i < engine.quorum; i++ {
 		pm := NewPbftCommitMessage(0, height, bh)
 		assert.NoError(t, pm.Sign(validatorKeys[i]))
 
-		go engine.HandleMessage(pm)
-
-		if i != engine.quorum-1 {
-			select {
-			case outgoingMsg := <-extCh:
-				_, ok := outgoingMsg.(*PbftCommitMessage)
-				assert.True(t, ok)
-				assert.True(t, engine.state.Eq(Prepared))
-			case <-time.After(100 * time.Millisecond):
-				t.Fatal("engine does not send PbftCommitMessage to channel")
-			}
-		}
+		handler(pm)
 	}
 
 	select {
@@ -179,10 +165,100 @@ func TestPbftConsensusEngine_HandleCommit(t *testing.T) {
 		finalizedBlockHash, err := fb.Hash()
 		assert.NoError(t, err)
 		assert.True(t, bh.Equal(finalizedBlockHash))
-		assert.True(t, engine.state.Eq(Finalized))
 		assert.NotNil(t, fb.Tail)
 
 	case <-time.After(time.Second):
 		t.Fatal("block does not finalized")
 	}
+
+	wg.Wait()
+
+	engine.StopEngine()
+	assert.True(t, engine.state.Eq(Terminated))
+}
+
+func TestPbftConsensusEngine_ViewChange(t *testing.T) {
+	vc, ih := 15, 6
+	keys, engines := GenerateTestPbftMultipleConsensusEngine(t, vc, ih)
+
+	t.Cleanup(func() {
+		for _, engine := range engines {
+			engine.StopEngine()
+		}
+	})
+
+	quorum := (2 * len(keys) / 3) + 1
+	sequence := engines[0].sequence
+	for _, engine := range engines {
+		assert.Equal(t, quorum, engine.quorum)
+		assert.Equal(t, sequence, engine.sequence)
+	}
+
+	igMsgCh := make(chan message.ConsensusMessage, 100)
+	igFbCh := make(chan *block.Block, 100)
+
+	for _, engine := range engines {
+		go func(e *PbftConsensusEngine) {
+			e.StartEngine()
+
+			msgCh := e.OutgoingMessage()
+			fbCh := e.FinalizedBlock()
+
+			for {
+				timer := time.After(20 * time.Second)
+
+				select {
+				case <-e.closeCh:
+					return
+				case <-timer:
+					addr := e.validator.PublicKey().Address()
+					t.Errorf("engine does not send FinalizedMessage to channel (%s)\n", addr.ShortString(8))
+					return
+				case msg := <-msgCh:
+					igMsgCh <- msg
+				case fb := <-fbCh:
+					igFbCh <- fb
+					return
+				}
+			}
+		}(engine)
+	}
+
+	var wg sync.WaitGroup
+	handler := func(engine *PbftConsensusEngine, msg message.ConsensusMessage) {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			engine.HandleMessage(msg)
+		}()
+	}
+
+	newView := uint64(1)
+	for i := 0; i < vc; i++ {
+		vcMsg := NewPbftViewChangeMessage(newView, sequence)
+		assert.NoError(t, vcMsg.Sign(keys[i]))
+
+		for _, engine := range engines {
+			handler(engine, vcMsg)
+		}
+	}
+
+	finalizedCount := 0
+	timer := time.After(20 * time.Second)
+	for finalizedCount < vc {
+		select {
+		case <-timer:
+			t.Fatalf("time-out (%d/%d)\n", finalizedCount, vc)
+		case msg := <-igMsgCh:
+			for _, engine := range engines {
+				handler(engine, msg)
+			}
+		case <-igFbCh:
+			finalizedCount++
+		}
+	}
+
+	wg.Wait()
+
+	assert.Equal(t, finalizedCount, vc)
 }

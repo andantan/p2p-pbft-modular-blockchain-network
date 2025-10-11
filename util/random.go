@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/binary"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/types"
+	"github.com/andantan/modular-blockchain/types"
 )
 
 func RandomBytes(len int) []byte {
@@ -12,16 +12,6 @@ func RandomBytes(len int) []byte {
 	_, _ = rand.Read(b)
 
 	return b
-}
-
-func RandomInt() int {
-	b := RandomBytes(8)
-
-	return int(binary.LittleEndian.Uint64(b))
-}
-
-func RandomIntWithMaximun(m int) int {
-	return RandomInt() % m
 }
 
 func RandomUint64() uint64 {

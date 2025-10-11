@@ -3,13 +3,14 @@ package tcp
 import (
 	"context"
 	"errors"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/crypto"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/network"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/network/message"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/types"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/util"
+	"github.com/andantan/modular-blockchain/codec"
+	"github.com/andantan/modular-blockchain/crypto"
+	"github.com/andantan/modular-blockchain/network/message"
+	"github.com/andantan/modular-blockchain/types"
+	"github.com/andantan/modular-blockchain/util"
 	"github.com/go-kit/log"
 	"net"
+	"sync"
 )
 
 type TcpNode struct {
@@ -18,36 +19,27 @@ type TcpNode struct {
 	listenAddr string
 	listener   net.Listener
 
-	privKey crypto.PrivateKey
-	pubKey  crypto.PublicKey
+	privKey *crypto.PrivateKey
+	pubKey  *crypto.PublicKey
 	address types.Address
 
-	messageCh chan message.RawMessage
-	newPeerCh chan *TcpPeer
-	delPeerCh chan *TcpPeer
-	stopCh    chan struct{}
+	peerMap *types.AtomicMap[types.Address, *TcpPeer]
 
-	peerSet *types.AtomicSet[types.Address]
+	outgoingMsgCh chan message.Raw
+	closeCh       chan struct{}
+
+	closeOnce sync.Once
 }
 
-func NewTcpNode(
-	privKey *crypto.PrivateKey,
-	listenAddr string,
-	msgCh chan message.RawMessage,
-	newPeerCh chan *TcpPeer,
-	delPeerCh chan *TcpPeer,
-	stopCh chan struct{},
-) *TcpNode {
+func NewTcpNode(privKey *crypto.PrivateKey, listenAddr string) *TcpNode {
 	t := &TcpNode{
-		listenAddr: listenAddr,
-		privKey:    *privKey,
-		pubKey:     *privKey.PublicKey(),
-		address:    privKey.PublicKey().Address(),
-		messageCh:  msgCh,
-		newPeerCh:  newPeerCh,
-		delPeerCh:  delPeerCh,
-		stopCh:     stopCh,
-		peerSet:    types.NewAtomicSet[types.Address](),
+		listenAddr:    listenAddr,
+		privKey:       privKey,
+		pubKey:        privKey.PublicKey(),
+		address:       privKey.PublicKey().Address(),
+		outgoingMsgCh: make(chan message.Raw, 1000),
+		closeCh:       make(chan struct{}),
+		peerMap:       types.NewAtomicMap[types.Address, *TcpPeer](),
 	}
 
 	t.logger = util.LoggerWithPrefixes("Node", "address", t.address.ShortString(8), "listen-addr", t.listenAddr)
@@ -66,6 +58,63 @@ func (n *TcpNode) Listen() {
 	n.listener = ln
 
 	go n.acceptLoop()
+}
+
+func (n *TcpNode) Connect(address string) error {
+	_ = n.logger.Log("msg", "connecting to peer", "net_address", address)
+
+	conn, err := net.Dial("tcp", address)
+	if err != nil {
+		return err
+	}
+
+	go n.handshakeAndValidate(conn)
+
+	return nil
+}
+
+func (n *TcpNode) ConsumeRawMessage() <-chan message.Raw {
+	return n.outgoingMsgCh
+}
+
+func (n *TcpNode) Broadcast(msg message.Message) error {
+	payload, err := codec.EncodeProto(msg)
+	if err != nil {
+		return err
+	}
+
+	n.peerMap.Range(func(addr types.Address, peer *TcpPeer) bool {
+		go func(p *TcpPeer) {
+			if e := p.Send(payload); err != nil {
+				_ = n.logger.Log("error", "failed to send message to peer", "peer_net_addr", p.NetAddr(), "peer_address", p.Address(), "err", e)
+			}
+		}(peer)
+		return true
+	})
+
+	return nil
+}
+
+func (n *TcpNode) Disconnect(addr types.Address) {
+	peer, ok := n.peerMap.Get(addr)
+	if !ok {
+		return
+	}
+	peer.Close()
+}
+
+func (n *TcpNode) Close() {
+	n.closeOnce.Do(func() {
+		_ = n.logger.Log("msg", "stopping tcp node")
+
+		n.peerMap.Range(func(addr types.Address, peer *TcpPeer) bool {
+			peer.Close()
+			return true
+		})
+
+		close(n.closeCh)
+		_ = n.listener.Close()
+	})
 }
 
 func (n *TcpNode) acceptLoop() {
@@ -114,7 +163,7 @@ func (n *TcpNode) acceptLoop() {
 			}
 			return
 
-		case <-n.stopCh:
+		case <-n.closeCh:
 			_ = n.logger.Log("msg", "server shutdown signal received, terminating accept loop")
 			return
 		}
@@ -122,15 +171,21 @@ func (n *TcpNode) acceptLoop() {
 }
 
 func (n *TcpNode) handshakeAndValidate(conn net.Conn) {
+	select {
+	case <-n.closeCh:
+		return
+	default:
+	}
+
 	_ = n.logger.Log("msg", "start handshake", "net-addr", conn.RemoteAddr())
 
 	var (
 		err      error
-		ourId    = NewTCPHandshakeMessage(&n.pubKey, n.listenAddr)
-		remoteId network.Message
+		ourId    = NewTcpHandshakeMessage(n.pubKey, n.listenAddr)
+		remoteId *TcpHandshakeMessage
 	)
 
-	if err = ourId.Sign(&n.privKey); err != nil {
+	if err = ourId.Sign(n.privKey); err != nil {
 		_ = conn.Close()
 		_ = n.logger.Log("msg", "failed to sign our identity", "err", err)
 		return
@@ -142,31 +197,22 @@ func (n *TcpNode) handshakeAndValidate(conn net.Conn) {
 		return
 	}
 
-	peer := NewTcpPeer(conn, n.messageCh, n.delPeerCh)
+	peer := NewTcpPeer(conn)
 
-	if remoteId, err = peer.Handshake(ourId); err != nil {
+	if remoteId, err = peer.handshake(ourId); err != nil {
 		_ = n.logger.Log("msg", "failed to message peer", "err", err)
 		return
 	}
 
-	remoteHand, ok := remoteId.(*TCPHandshakeMessage)
-
-	if !ok {
-		_ = n.logger.Log("msg", "invalid remote handshake message type for TCPHandshakeMessage")
-		_ = conn.Close()
-		return
-	}
-
-	remoteAddress := remoteHand.PublicKey.Address()
-	if !n.peerSet.PutIfNotExist(remoteAddress) {
+	remoteAddress := remoteId.PublicKey.Address()
+	if !n.peerMap.PutIfNotExist(remoteAddress, peer) {
 		// tie-breaking
 		_ = n.logger.Log("msg", "tie-breaking: new commencing with existing peer", "net-addr", peer.NetAddr(), "address", peer.Address())
 		isInbound := conn.LocalAddr() == n.listener.Addr()
 		isLargerId := n.address.String() > remoteAddress.String()
 		if isInbound && isLargerId {
 			_ = n.logger.Log("msg", "tie-breaking: dropping inbound from lower ID peer")
-			_ = conn.Close()
-			n.Remove(peer.Address())
+			peer.Close()
 		}
 
 		return
@@ -174,27 +220,30 @@ func (n *TcpNode) handshakeAndValidate(conn net.Conn) {
 
 	_ = n.logger.Log("msg", "peer handshaking finished. send peer to newPeerCh", "net-addr", peer.NetAddr(), "address", peer.Address().ShortString(8))
 
-	n.newPeerCh <- peer
+	go peer.Read()
+	go n.forwardMessages(peer)
 }
 
-func (n *TcpNode) Connect(address string) error {
-	_ = n.logger.Log("msg", "connecting to peer", "address", address)
+func (n *TcpNode) forwardMessages(p *TcpPeer) {
+	peerMsgCh := p.ConsumeRawMessage()
 
-	conn, err := net.Dial("tcp", address)
-	if err != nil {
-		return err
+	for {
+		select {
+		case <-n.closeCh:
+			return
+		case msg, ok := <-peerMsgCh:
+			if !ok {
+				addr := p.Address()
+				_ = n.logger.Log("msg", "closed peer channel", "peer_net_addr", p.NetAddr(), "peer_address", addr.ShortString(8))
+				n.peerMap.Remove(addr)
+				return
+			}
+
+			select {
+			case n.outgoingMsgCh <- msg:
+			case <-n.closeCh:
+				return
+			}
+		}
 	}
-
-	go n.handshakeAndValidate(conn)
-
-	return nil
-}
-
-func (n *TcpNode) Remove(addr types.Address) {
-	n.peerSet.Remove(addr)
-}
-
-func (n *TcpNode) Stop() {
-	_ = n.logger.Log("msg", "stopping tcp node")
-	_ = n.listener.Close()
 }

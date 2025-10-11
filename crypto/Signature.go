@@ -49,14 +49,12 @@ func (s *Signature) Bytes() []byte {
 
 func (s *Signature) String() string {
 	b := s.Bytes()
-
 	if b == nil {
 		return ""
 	}
 
-	return hex.EncodeToString(b)
+	return "0x" + hex.EncodeToString(b)
 }
-
 func SignatureFromBytes(b []byte) (*Signature, error) {
 	if len(b) != SignatureLength {
 		return nil, fmt.Errorf("invalid signature length: %d", len(b))

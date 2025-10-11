@@ -1,8 +1,8 @@
 package tcp
 
 import (
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/codec"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/crypto"
+	"github.com/andantan/modular-blockchain/codec"
+	"github.com/andantan/modular-blockchain/crypto"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -23,7 +23,7 @@ func TestHandshakeMessage_EncodeDecode(t *testing.T) {
 	assert.NoError(t, err)
 
 	// UnMarshalling
-	decodedMsg := new(TCPHandshakeMessage)
+	decodedMsg := new(TcpHandshakeMessage)
 	assert.NoError(t, codec.DecodeProto(encodedBytes, decodedMsg))
 
 	assert.NoError(t, decodedMsg.Verify())

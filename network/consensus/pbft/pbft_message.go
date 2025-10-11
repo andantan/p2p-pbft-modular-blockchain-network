@@ -6,11 +6,11 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/core/block"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/crypto"
-	pbBlock "github.com/andantan/p2p-pbft-modular-blockchain-network/proto/core/block"
-	pbPbft "github.com/andantan/p2p-pbft-modular-blockchain-network/proto/network/consensus/pbft"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/types"
+	"github.com/andantan/modular-blockchain/core/block"
+	"github.com/andantan/modular-blockchain/crypto"
+	pbBlock "github.com/andantan/modular-blockchain/proto/core/block"
+	pbPbft "github.com/andantan/modular-blockchain/proto/network/consensus/pbft"
+	"github.com/andantan/modular-blockchain/types"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -179,9 +179,9 @@ func (m *PbftPrePrepareMessage) Address() types.Address {
 }
 
 /*
-	Phase 2: Prepare-Vote <PREPARE, v, n, d, md>
+	Phase 2: Prepare-Vote <PREPARE, v, n, m, d>
 
-Message = <PREPARE, View, Sequence, <Digest, PublicKey, Signature>, Block>
+Message = <PREPARE, View, Sequence, BlockHash, <Digest, PublicKey, Signature>>
 */
 type PbftPrepareMessage struct {
 	View      uint64
@@ -319,9 +319,9 @@ func (m *PbftPrepareMessage) Address() types.Address {
 }
 
 /*
-	Phase 3: Commit-Vote <COMMIT, v, n, d, md>
+	Phase 3: Commit-Vote <COMMIT, v, n, m, d>
 
-Message = <COMMIT, View, Sequence, <Digest, PublicKey, Signature>, Block>
+Message = <COMMIT, View, Sequence, BlockHash, <Digest, PublicKey, Signature>>
 */
 type PbftCommitMessage struct {
 	View      uint64
@@ -458,6 +458,11 @@ func (m *PbftCommitMessage) Address() types.Address {
 	return m.PublicKey.Address()
 }
 
+/*
+	Phase 1: View-Change-Vote <View-Change, v+1, n, d>
+
+Message = <View-Change, View+1, Sequence, <Digest, PublicKey, Signature>>
+*/
 type PbftViewChangeMessage struct {
 	NewView   uint64
 	Sequence  uint64
@@ -580,6 +585,11 @@ func (m *PbftViewChangeMessage) Address() types.Address {
 	return m.PublicKey.Address()
 }
 
+/*
+	Phase 2: New-View <New-View, v+1, n, vs, <PRE-PREPARE>, d>
+
+Message = <New-View, View+1, Sequence, ViewChangeMessages, <PrePrepareMessage>, <Digest, PublicKey, Signature>>
+*/
 type PbftNewViewMessage struct {
 	NewView            uint64
 	Sequence           uint64
@@ -634,6 +644,10 @@ func (m *PbftNewViewMessage) Hash() (types.Hash, error) {
 }
 
 func (m *PbftNewViewMessage) Sign(privKey *crypto.PrivateKey) error {
+	if err := m.PrePrepareMessage.Sign(privKey); err != nil {
+		return err
+	}
+
 	hash, err := m.Hash()
 	if err != nil {
 		return err

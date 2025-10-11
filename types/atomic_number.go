@@ -53,6 +53,16 @@ func (a *AtomicNumber[N]) Set(newValue N) {
 	a.n = newValue
 }
 
+func (a *AtomicNumber[N]) CompareAndSwap(old, new N) bool {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+	if a.n == old {
+		a.n = new
+		return true
+	}
+	return false
+}
+
 func (a *AtomicNumber[N]) Get() N {
 	a.lock.RLock()
 	defer a.lock.RUnlock()

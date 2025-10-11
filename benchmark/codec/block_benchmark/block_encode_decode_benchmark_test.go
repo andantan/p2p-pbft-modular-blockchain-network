@@ -3,12 +3,12 @@ package block_benchmark
 import (
 	"bytes"
 	"encoding/gob"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/core/block"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/crypto"
-	pbBenchmark "github.com/andantan/p2p-pbft-modular-blockchain-network/proto/benchmark/codec/block_benchmark"
-	pbBlock "github.com/andantan/p2p-pbft-modular-blockchain-network/proto/core/block"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/types"
-	"github.com/andantan/p2p-pbft-modular-blockchain-network/util"
+	"github.com/andantan/modular-blockchain/core/block"
+	"github.com/andantan/modular-blockchain/crypto"
+	pbBenchmark "github.com/andantan/modular-blockchain/proto/benchmark/codec/block_benchmark"
+	pbBlock "github.com/andantan/modular-blockchain/proto/core/block"
+	"github.com/andantan/modular-blockchain/types"
+	"github.com/andantan/modular-blockchain/util"
 	"google.golang.org/protobuf/proto"
 	"testing"
 )

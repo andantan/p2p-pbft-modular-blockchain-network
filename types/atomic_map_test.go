@@ -36,11 +36,11 @@ func TestMap_BasicCRUD(t *testing.T) {
 func TestMap_PutIfNotExists(t *testing.T) {
 	m := NewAtomicMap[string, int]()
 
-	added := m.PutIfNotExists("apple", 100)
+	added := m.PutIfNotExist("apple", 100)
 	assert.True(t, added)
 	assert.Equal(t, 1, m.Len())
 
-	added = m.PutIfNotExists("apple", 200)
+	added = m.PutIfNotExist("apple", 200)
 	assert.False(t, added)
 	val, _ := m.Get("apple")
 	assert.Equal(t, 100, val)
@@ -89,7 +89,7 @@ func TestMap_RaceCondition(t *testing.T) {
 
 			// Put, PutIfNotExists
 			m.Put(key, i)
-			m.PutIfNotExists(key, i*100)
+			m.PutIfNotExist(key, i*100)
 
 			// Get, Exists, GetWeight
 			_, _ = m.Get(key)
