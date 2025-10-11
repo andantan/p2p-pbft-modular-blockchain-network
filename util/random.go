@@ -14,22 +14,6 @@ func RandomBytes(len int) []byte {
 	return b
 }
 
-func RandomAddress() types.Address {
-	var addr types.Address
-	_, _ = rand.Read(addr[:])
-	return addr
-}
-
-func RandomInt() int {
-	b := RandomBytes(8)
-
-	return int(binary.LittleEndian.Uint64(b))
-}
-
-func RandomIntWithMaximun(m int) int {
-	return RandomInt() % m
-}
-
 func RandomUint64() uint64 {
 	b := RandomBytes(8)
 

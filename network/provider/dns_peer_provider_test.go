@@ -2,7 +2,7 @@ package provider
 
 import (
 	"encoding/json"
-	"github.com/andantan/modular-blockchain/network"
+	"github.com/andantan/modular-blockchain/network/message"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
@@ -16,7 +16,7 @@ func TestDnsPeerProvider_Register(t *testing.T) {
 		assert.Equal(t, "/register", r.URL.Path)
 		assert.Equal(t, "POST", r.Method)
 
-		var receivedInfo network.PeerInfo
+		var receivedInfo message.PeerInfo
 		assert.NoError(t, json.NewDecoder(r.Body).Decode(&receivedInfo))
 		assert.Equal(t, i.Address, receivedInfo.Address)
 		assert.Equal(t, i.NetAddr, receivedInfo.NetAddr)
@@ -38,7 +38,7 @@ func TestDnsPeerProvider_Deregister(t *testing.T) {
 		assert.Equal(t, "/deregister", r.URL.Path)
 		assert.Equal(t, "POST", r.Method)
 
-		var receivedInfo network.PeerInfo
+		var receivedInfo message.PeerInfo
 		assert.NoError(t, json.NewDecoder(r.Body).Decode(&receivedInfo))
 		assert.Equal(t, i.Address, receivedInfo.Address)
 		assert.Equal(t, i.NetAddr, receivedInfo.NetAddr)
@@ -61,7 +61,7 @@ func TestDnsPeerProvider_Heartbeat(t *testing.T) {
 		assert.Equal(t, "/heartbeat", r.URL.Path)
 		assert.Equal(t, "POST", r.Method)
 
-		var receivedInfo network.PeerInfo
+		var receivedInfo message.PeerInfo
 		assert.NoError(t, json.NewDecoder(r.Body).Decode(&receivedInfo))
 		assert.Equal(t, i.Address, receivedInfo.Address)
 		assert.Equal(t, i.NetAddr, receivedInfo.NetAddr)
@@ -79,10 +79,10 @@ func TestDnsPeerProvider_Heartbeat(t *testing.T) {
 
 func TestDnsPeerProvider_DiscoverPeers(t *testing.T) {
 	peerN := 50
-	expectedPeers := make([]network.PeerInfo, peerN)
+	expectedPeers := make([]*message.PeerInfo, peerN)
 	for i := 0; i < peerN; i++ {
 		peer := GenerateRandomPeerInfo(t)
-		expectedPeers[i] = *peer
+		expectedPeers[i] = peer
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -103,10 +103,10 @@ func TestDnsPeerProvider_DiscoverPeers(t *testing.T) {
 
 func TestDnsPeerProvider_GetValidators(t *testing.T) {
 	peerN := 50
-	expectedPeers := make([]network.PeerInfo, peerN)
+	expectedPeers := make([]*message.PeerInfo, peerN)
 	for i := 0; i < peerN; i++ {
 		peer := GenerateRandomPeerInfo(t)
-		expectedPeers[i] = *peer
+		expectedPeers[i] = peer
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

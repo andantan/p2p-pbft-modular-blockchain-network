@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/andantan/modular-blockchain/types"
+	"strings"
 )
 
 const (
@@ -25,6 +26,26 @@ func (k *PublicKey) Bytes() []byte {
 	return b
 }
 
+func (k *PublicKey) Address() types.Address {
+	h := sha256.Sum256(k.Key)
+	s := len(h) - types.AddressLength
+	a, _ := types.AddressFromBytes(h[s:])
+
+	return a
+}
+
+func (k *PublicKey) String() string {
+	if k == nil || len(k.Key) == 0 {
+		return ""
+	}
+
+	return "0x" + hex.EncodeToString(k.Key)
+}
+
+func (k *PublicKey) Equal(other *PublicKey) bool {
+	return bytes.Equal(k.Key, other.Key)
+}
+
 func PublicKeyFromBytes(b []byte) (*PublicKey, error) {
 	if len(b) != PublicKeyLength {
 		return nil, fmt.Errorf("invalid public key length: %d, must be %d", len(b), PublicKeyLength)
@@ -39,22 +60,17 @@ func PublicKeyFromBytes(b []byte) (*PublicKey, error) {
 	return k, nil
 }
 
-func (k *PublicKey) Address() types.Address {
-	h := sha256.Sum256(k.Key)
-	s := len(h) - types.AddressLength
-	a, _ := types.AddressFromBytes(h[s:])
+func PublicKeyFromHexString(s string) (*PublicKey, error) {
+	s = strings.TrimPrefix(s, "0x")
 
-	return a
-}
-
-func (k *PublicKey) String() string {
-	if k == nil || len(k.Key) == 0 {
-		return "PublicKey<nil>"
+	if len(s) != PublicKeyLength*2 {
+		return nil, fmt.Errorf("invalid hex string length for public key (%d), must be %d", len(s), PublicKeyLength*2)
 	}
 
-	return fmt.Sprintf("PublicKey{%s...}", hex.EncodeToString(k.Key)[:16])
-}
+	pubKeyBytes, err := hex.DecodeString(s)
+	if err != nil {
+		return nil, err
+	}
 
-func (k *PublicKey) Equal(other *PublicKey) bool {
-	return bytes.Equal(k.Key, other.Key)
+	return PublicKeyFromBytes(pubKeyBytes)
 }
