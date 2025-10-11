@@ -3,12 +3,11 @@ package message
 import (
 	"github.com/andantan/modular-blockchain/codec"
 	"github.com/andantan/modular-blockchain/types"
-	"io"
 )
 
 type Raw interface {
 	From() types.Address
-	Payload() io.Reader
+	Payload() []byte
 }
 
 type Message interface {

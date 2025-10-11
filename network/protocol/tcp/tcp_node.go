@@ -61,7 +61,7 @@ func (n *TcpNode) Listen() {
 }
 
 func (n *TcpNode) Connect(address string) error {
-	_ = n.logger.Log("msg", "connecting to peer", "address", address)
+	_ = n.logger.Log("msg", "connecting to peer", "net_address", address)
 
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
@@ -106,6 +106,12 @@ func (n *TcpNode) Disconnect(addr types.Address) {
 func (n *TcpNode) Close() {
 	n.closeOnce.Do(func() {
 		_ = n.logger.Log("msg", "stopping tcp node")
+
+		n.peerMap.Range(func(addr types.Address, peer *TcpPeer) bool {
+			peer.Close()
+			return true
+		})
+
 		close(n.closeCh)
 		_ = n.listener.Close()
 	})
@@ -214,6 +220,7 @@ func (n *TcpNode) handshakeAndValidate(conn net.Conn) {
 
 	_ = n.logger.Log("msg", "peer handshaking finished. send peer to newPeerCh", "net-addr", peer.NetAddr(), "address", peer.Address().ShortString(8))
 
+	go peer.Read()
 	go n.forwardMessages(peer)
 }
 

@@ -3,7 +3,6 @@ package tcp
 import (
 	"github.com/andantan/modular-blockchain/crypto"
 	"github.com/stretchr/testify/assert"
-	"io"
 	"net"
 	"sync"
 	"testing"
@@ -98,9 +97,7 @@ func TestTCPPeer_SendAndRead(t *testing.T) {
 	peerBMsgCh := peerB.ConsumeRawMessage()
 	select {
 	case rawMsg := <-peerBMsgCh:
-		receivedMsg, err := io.ReadAll(rawMsg.Payload())
-		assert.NoError(t, err)
-		assert.Equal(t, msgToSend, receivedMsg)
+		assert.Equal(t, msgToSend, rawMsg.Payload())
 	case <-time.After(1 * time.Second):
 		t.Fatal("message was not received")
 	}
@@ -193,9 +190,7 @@ func TestTCPPeer_Close(t *testing.T) {
 
 	select {
 	case rawMsg := <-peerBMsgCh:
-		receivedMsg, err := io.ReadAll(rawMsg.Payload())
-		assert.NoError(t, err)
-		assert.Equal(t, msgToSend, receivedMsg)
+		assert.Equal(t, msgToSend, rawMsg.Payload())
 	case <-time.After(1 * time.Second):
 		t.Fatal("message was not received")
 	}
@@ -207,9 +202,7 @@ func TestTCPPeer_Close(t *testing.T) {
 
 	select {
 	case rawMsg := <-peerAMsgCh:
-		receivedMsg, err := io.ReadAll(rawMsg.Payload())
-		assert.NoError(t, err)
-		assert.Equal(t, msgToSend2, receivedMsg)
+		assert.Equal(t, msgToSend2, rawMsg.Payload())
 	case <-time.After(1 * time.Second):
 		t.Fatal("message was not received")
 	}

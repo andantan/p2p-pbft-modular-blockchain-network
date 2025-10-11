@@ -1,146 +1,172 @@
 package tcp
 
-//func TestTCPNode_ConnectAndAccept(t *testing.T) {
-//	nodeANetAddr := ":4000"
-//	nodeBNetAddr := ":5000"
-//
-//	privKeyA, _ := crypto.GeneratePrivateKey()
-//	msgChA := make(chan network.RawMessage)
-//	newPeerChA := make(chan *TcpPeer)
-//	delPeerChA := make(chan *TcpPeer)
-//	stopChA := make(chan struct{})
-//	nodeA := NewTcpNode(privKeyA, nodeANetAddr, msgChA, newPeerChA, delPeerChA, stopChA)
-//
-//	privKeyB, _ := crypto.GeneratePrivateKey()
-//	msgChB := make(chan network.RawMessage)
-//	newPeerChB := make(chan *TcpPeer)
-//	delPeerChB := make(chan *TcpPeer)
-//	stopChB := make(chan struct{})
-//	nodeB := NewTcpNode(privKeyB, nodeBNetAddr, msgChB, newPeerChB, delPeerChB, stopChB)
-//
-//	go nodeA.Listen()
-//
-//	t.Cleanup(func() {
-//		nodeA.Close()
-//	})
-//
-//	// delay for nodeA starting
-//	time.Sleep(100 * time.Millisecond)
-//
-//	assert.NoError(t, nodeB.Connect(nodeANetAddr))
-//
-//	select {
-//	case peer := <-nodeA.newPeerCh:
-//		assert.NotNil(t, peer)
-//		assert.Equal(t, nodeB.address, peer.Address())
-//		assert.Equal(t, nodeB.pubKey, *peer.PublicKey())
-//		assert.Equal(t, nodeBNetAddr, peer.NetAddr())
-//
-//	case <-time.After(2 * time.Second):
-//		t.Fatal("Node A did not receive peer from B")
-//	}
-//
-//	select {
-//	case peer := <-nodeB.newPeerCh:
-//		assert.NotNil(t, peer)
-//		assert.Equal(t, nodeA.address, peer.Address())
-//		assert.Equal(t, nodeA.pubKey, *peer.PublicKey())
-//		assert.Equal(t, nodeANetAddr, peer.NetAddr())
-//
-//	case <-time.After(2 * time.Second):
-//		t.Fatal("Node B did not receive peer from A")
-//	}
-//}
-//
-//func TestTCPNode_Stop(t *testing.T) {
-//	nodeANetAddr := ":6000"
-//	privKey, _ := crypto.GeneratePrivateKey()
-//	imcomingMsgCh := make(chan network.RawMessage)
-//	newPeerCh := make(chan *TcpPeer)
-//	delPeerCh := make(chan *TcpPeer)
-//	stopCh := make(chan struct{})
-//
-//	defer close(imcomingMsgCh)
-//	defer close(newPeerCh)
-//	defer close(delPeerCh)
-//
-//	node := NewTcpNode(privKey, nodeANetAddr, imcomingMsgCh, newPeerCh, delPeerCh, stopCh)
-//
-//	go node.Listen()
-//
-//	// delay for node starting
-//	time.Sleep(100 * time.Millisecond)
-//
-//	close(stopCh)
-//	node.Close()
-//
-//	// delay for node stopping
-//	time.Sleep(100 * time.Millisecond)
-//
-//	ln, err := net.Listen("tcp", nodeANetAddr)
-//
-//	// if listener closed normally, err must be nil
-//	assert.NoError(t, err)
-//	if err == nil {
-//		_ = ln.Close()
-//	}
-//}
-//
-//func TestTCPNode_TieBreaking(t *testing.T) {
-//	privKeyA, err := crypto.GeneratePrivateKey()
-//	assert.NoError(t, err)
-//	nodeANetAddr := ":7000"
-//	msgChA := make(chan network.RawMessage)
-//	newPeerChA := make(chan *TcpPeer)
-//	delPeerChA := make(chan *TcpPeer)
-//	stopChA := make(chan struct{})
-//	nodeA := NewTcpNode(privKeyA, nodeANetAddr, msgChA, newPeerChA, delPeerChA, stopChA)
-//
-//	privKeyB, err := crypto.GeneratePrivateKey()
-//	assert.NoError(t, err)
-//	nodeBNetAddr := ":8000"
-//	msgChB := make(chan network.RawMessage)
-//	newPeerChB := make(chan *TcpPeer)
-//	delPeerChB := make(chan *TcpPeer)
-//	stopChB := make(chan struct{})
-//	nodeB := NewTcpNode(privKeyB, nodeBNetAddr, msgChB, newPeerChB, delPeerChB, stopChB)
-//
-//	go nodeA.Listen()
-//	t.Cleanup(func() {
-//		nodeA.Close()
-//	})
-//	go nodeB.Listen()
-//	t.Cleanup(func() {
-//		nodeB.Close()
-//	})
-//	// delay for nodeA, B starting
-//	time.Sleep(100 * time.Millisecond)
-//
-//	wg := new(sync.WaitGroup)
-//	wg.Add(2)
-//
-//	go func() {
-//		defer wg.Done()
-//		_ = nodeA.Connect(nodeBNetAddr)
-//	}()
-//
-//	go func() {
-//		defer wg.Done()
-//		_ = nodeB.Connect(nodeANetAddr)
-//	}()
-//
-//	wg.Wait()
-//
-//	// delay for nodeA, B handshaking
-//	time.Sleep(200 * time.Millisecond)
-//
-//	go func() {
-//		for range nodeA.newPeerCh {
-//		}
-//		for range nodeB.newPeerCh {
-//		}
-//	}()
-//
-//	assert.Equal(t, nodeA.peerSet.Len(), 1)
-//	assert.Equal(t, nodeB.peerSet.Len(), 1)
-//}
+import (
+	"fmt"
+	"github.com/andantan/modular-blockchain/codec"
+	"github.com/andantan/modular-blockchain/core/block"
+	"github.com/stretchr/testify/assert"
+	"net"
+	"sync"
+	"testing"
+	"time"
+)
+
+func TestTCPNode_ConnectAndAccept(t *testing.T) {
+	nodeANetAddr := ":4000"
+	nodeA := GenerateTestTcpNode(t, nodeANetAddr)
+
+	nodeBNetAddr := ":5000"
+	nodeB := GenerateTestTcpNode(t, nodeBNetAddr)
+
+	nodeA.Listen()
+	go nodeA.acceptLoop()
+	nodeB.Listen()
+	go nodeB.acceptLoop()
+
+	t.Cleanup(func() {
+		nodeA.Close()
+		nodeB.Close()
+	})
+
+	// delay for nodes starting
+	time.Sleep(100 * time.Millisecond)
+
+	assert.NoError(t, nodeB.Connect(nodeANetAddr))
+	// delay for connect & handshake
+	time.Sleep(100 * time.Millisecond)
+
+	assert.Equal(t, 1, nodeA.peerMap.Len())
+	assert.Equal(t, 1, nodeB.peerMap.Len())
+
+	testMsgContent := []byte("hello from B")
+	peeraOfB, ok := nodeB.peerMap.Get(nodeA.address)
+	assert.True(t, ok)
+	assert.Equal(t, peeraOfB.Address(), nodeA.address)
+	assert.NoError(t, peeraOfB.Send(testMsgContent))
+
+	select {
+	case rawMsg := <-nodeA.ConsumeRawMessage():
+		assert.Equal(t, nodeB.address, rawMsg.From())
+		assert.Equal(t, testMsgContent, rawMsg.Payload())
+	case <-time.After(1 * time.Second):
+		t.Fatal("Node A did not receive message from B")
+	}
+
+	nodeA.Disconnect(nodeB.address)
+	time.Sleep(100 * time.Millisecond)
+
+	assert.Equal(t, 0, nodeA.peerMap.Len())
+	assert.Equal(t, 0, nodeB.peerMap.Len())
+}
+
+func TestTCPNode_Stop(t *testing.T) {
+	nodeNetAddr := ":7000"
+	node := GenerateTestTcpNode(t, nodeNetAddr)
+
+	go node.Listen()
+	// delay for node starting
+	time.Sleep(100 * time.Millisecond)
+
+	node.Close()
+	// delay for node stopping
+	time.Sleep(100 * time.Millisecond)
+
+	ln, err := net.Listen("tcp", nodeNetAddr)
+
+	// if listener closed normally, err must be nil
+	assert.NoError(t, err)
+	if err == nil {
+		_ = ln.Close()
+	}
+}
+
+func TestTCPNode_TieBreaking(t *testing.T) {
+	nodeANetAddr := ":7000"
+	nodeA := GenerateTestTcpNode(t, nodeANetAddr)
+
+	nodeBNetAddr := ":8000"
+	nodeB := GenerateTestTcpNode(t, nodeBNetAddr)
+
+	go nodeA.Listen()
+	go nodeB.Listen()
+	t.Cleanup(func() {
+		nodeA.Close()
+		nodeB.Close()
+	})
+	// delay for nodeA, B starting
+	time.Sleep(100 * time.Millisecond)
+
+	wg := new(sync.WaitGroup)
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		assert.NoError(t, nodeA.Connect(nodeBNetAddr))
+	}()
+
+	go func() {
+		defer wg.Done()
+		assert.NoError(t, nodeB.Connect(nodeANetAddr))
+	}()
+
+	wg.Wait()
+
+	// delay for nodeA, B handshaking
+	time.Sleep(200 * time.Millisecond)
+
+	assert.Equal(t, nodeA.peerMap.Len(), 1)
+	assert.Equal(t, nodeB.peerMap.Len(), 1)
+}
+
+func TestTCPNode_Broadcast(t *testing.T) {
+	mainNodeAddr := ":10000"
+	node := GenerateTestTcpNode(t, mainNodeAddr)
+
+	node.Listen()
+	time.Sleep(100 * time.Millisecond)
+
+	numPeers := 7
+	remoteNodes := make([]*TcpNode, numPeers)
+	for i := 0; i < numPeers; i++ {
+		go func() {
+			remoteNode := GenerateTestTcpNode(t, fmt.Sprintf(":%d", 10001+i))
+			remoteNode.Listen()
+
+			time.Sleep(100 * time.Millisecond)
+			remoteNodes[i] = remoteNode
+			assert.NoError(t, remoteNode.Connect(mainNodeAddr))
+		}()
+	}
+
+	t.Cleanup(func() {
+		node.Close()
+		for _, n := range remoteNodes {
+			n.Close()
+		}
+	})
+
+	time.Sleep(200 * time.Millisecond)
+	assert.Equal(t, numPeers, node.peerMap.Len())
+
+	tx := block.GenerateRandomTestTransaction(t)
+	assert.NoError(t, node.Broadcast(tx))
+
+	wg := new(sync.WaitGroup)
+	wg.Add(numPeers)
+
+	for _, remoteNode := range remoteNodes {
+		go func(n *TcpNode) {
+			defer wg.Done()
+			select {
+			case msg := <-n.ConsumeRawMessage():
+				decodedTx := new(block.Transaction)
+				assert.NoError(t, codec.DecodeProto(msg.Payload(), decodedTx))
+				assert.NotEmpty(t, msg.Payload())
+			case <-time.After(200 * time.Millisecond):
+				t.Errorf("peer %s does not received msg", n.address.ShortString(8))
+			}
+		}(remoteNode)
+	}
+
+	wg.Wait()
+}

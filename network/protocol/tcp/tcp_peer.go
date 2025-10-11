@@ -245,9 +245,7 @@ func (p *TcpPeer) readHandshakeMessage(msgCh chan<- *TcpHandshakeMessage, errCh 
 		}
 		return
 	}
-
-	_ = p.logger.Log("msg", "received and verified handshake messaage", "net-addr", h.NetAddr, "addr", h.PublicKey.Address().ShortString(8))
-
+	
 	select {
 	case <-p.closeCh:
 	case msgCh <- h:

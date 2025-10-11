@@ -157,6 +157,69 @@ func (e *PbftConsensusEngine) StopEngine() {
 	})
 }
 
+func (e *PbftConsensusEngine) run() {
+	timer := time.NewTimer(e.viewChangeTimeout)
+	defer timer.Stop()
+
+	_ = e.logger.Log("msg", "start consensus engine", "state", e.state.Get(), "view", e.view.Get(), "sequence", "not-initialized")
+
+	for {
+		select {
+		case <-e.closeCh:
+			_ = e.logger.Log("msg", "exit engine loop", "state", e.state.Get(), "view", e.view.Get(), "sequence", e.sequence)
+			return
+		case <-timer.C:
+			_ = e.logger.Log("msg", "consensus timeout", "view", e.view.Get(), "sequence", e.sequence)
+
+			if err := e.startViewChange(); err != nil {
+				_ = e.logger.Log("error", "failed to start view change", "err", err, "view", e.view.Get(), "sequence", e.sequence)
+			}
+
+			timer.Reset(e.viewChangeTimeout)
+		case msg := <-e.internalMsgCh:
+			if msg == nil {
+				continue
+			}
+
+			if !timer.Stop() {
+				select {
+				case <-timer.C:
+				default:
+				}
+			}
+			timer.Reset(e.viewChangeTimeout)
+
+			var (
+				rm  message.ConsensusMessage
+				err error
+			)
+			switch t := msg.(type) {
+			case *PbftPrePrepareMessage:
+				rm, err = e.handlePrePrepareMessage(t)
+			case *PbftPrepareMessage:
+				rm, err = e.handlePrepareMessage(t)
+			case *PbftCommitMessage:
+				rm, err = e.handleCommitMessage(t)
+			case *PbftViewChangeMessage:
+				rm, err = e.handleViewChangeMessage(t)
+			case *PbftNewViewMessage:
+				rm, err = e.handleNewViewMessage(t)
+			default:
+				rm, err = nil, fmt.Errorf("unknown consensus message (type: %T)", msg)
+			}
+
+			if err != nil {
+				_ = e.logger.Log("msg", err)
+				continue
+			}
+
+			if rm != nil {
+				e.sendToOutgoing(rm)
+			}
+		}
+	}
+}
+
 func (e *PbftConsensusEngine) handlePrePrepareMessage(m *PbftPrePrepareMessage) (message.ConsensusMessage, error) {
 	if e.state.Gte(PrePrepared) {
 		return nil, nil
@@ -347,69 +410,6 @@ func (e *PbftConsensusEngine) handleNewViewMessage(m *PbftNewViewMessage) (messa
 	return e.handlePrePrepareMessage(m.PrePrepareMessage)
 }
 
-func (e *PbftConsensusEngine) run() {
-	timer := time.NewTimer(e.viewChangeTimeout)
-	defer timer.Stop()
-
-	_ = e.logger.Log("msg", "start consensus engine", "state", e.state.Get(), "view", e.view.Get(), "sequence", "not-initialized")
-
-	for {
-		select {
-		case <-e.closeCh:
-			_ = e.logger.Log("msg", "exit engine loop", "state", e.state.Get(), "view", e.view.Get(), "sequence", e.sequence)
-			return
-		case <-timer.C:
-			_ = e.logger.Log("msg", "consensus timeout", "view", e.view.Get(), "sequence", e.sequence)
-
-			if err := e.startViewChange(); err != nil {
-				_ = e.logger.Log("error", "failed to start view change", "err", err, "view", e.view.Get(), "sequence", e.sequence)
-			}
-
-			timer.Reset(e.viewChangeTimeout)
-		case msg := <-e.internalMsgCh:
-			if msg == nil {
-				continue
-			}
-
-			if !timer.Stop() {
-				select {
-				case <-timer.C:
-				default:
-				}
-			}
-			timer.Reset(e.viewChangeTimeout)
-
-			var (
-				rm  message.ConsensusMessage
-				err error
-			)
-			switch t := msg.(type) {
-			case *PbftPrePrepareMessage:
-				rm, err = e.handlePrePrepareMessage(t)
-			case *PbftPrepareMessage:
-				rm, err = e.handlePrepareMessage(t)
-			case *PbftCommitMessage:
-				rm, err = e.handleCommitMessage(t)
-			case *PbftViewChangeMessage:
-				rm, err = e.handleViewChangeMessage(t)
-			case *PbftNewViewMessage:
-				rm, err = e.handleNewViewMessage(t)
-			default:
-				rm, err = nil, fmt.Errorf("unknown consensus message (type: %T)", msg)
-			}
-
-			if err != nil {
-				_ = e.logger.Log("msg", err)
-				continue
-			}
-
-			if rm != nil {
-				e.sendToOutgoing(rm)
-			}
-		}
-	}
-}
-
 func (e *PbftConsensusEngine) finalizeEngine() {
 	e.finalizeOnce.Do(func() {
 		_ = e.logger.Log("msg", "finalizing consensus", "state", e.state.Get(), "view", e.view.Get(), "sequence", e.sequence)
@@ -445,8 +445,6 @@ func (e *PbftConsensusEngine) finalizeEngine() {
 		}
 
 		_ = e.logger.Log("msg", "finalized consensus", "state", e.state.Get(), "view", e.view.Get(), "sequence", e.sequence)
-
-		// e.StopEngine()
 	})
 }
 

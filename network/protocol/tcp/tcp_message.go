@@ -9,7 +9,6 @@ import (
 	pb "github.com/andantan/modular-blockchain/proto/network/protocol/tcp"
 	"github.com/andantan/modular-blockchain/types"
 	"google.golang.org/protobuf/proto"
-	"io"
 )
 
 type TcpHandshakeMessage struct {
@@ -117,13 +116,13 @@ func (h *TcpHandshakeMessage) EmptyProto() proto.Message {
 
 type TcpRawMessage struct {
 	from    types.Address
-	payload io.Reader
+	payload []byte
 }
 
 func NewTcpRawMessage(from types.Address, payload []byte) *TcpRawMessage {
 	return &TcpRawMessage{
 		from:    from,
-		payload: bytes.NewBuffer(payload),
+		payload: payload,
 	}
 }
 
@@ -131,6 +130,6 @@ func (m *TcpRawMessage) From() types.Address {
 	return m.from
 }
 
-func (m *TcpRawMessage) Payload() io.Reader {
+func (m *TcpRawMessage) Payload() []byte {
 	return m.payload
 }

@@ -14,6 +14,12 @@ func RandomBytes(len int) []byte {
 	return b
 }
 
+func RandomAddress() types.Address {
+	var addr types.Address
+	_, _ = rand.Read(addr[:])
+	return addr
+}
+
 func RandomInt() int {
 	b := RandomBytes(8)
 
