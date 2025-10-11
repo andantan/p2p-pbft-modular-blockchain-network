@@ -5,7 +5,8 @@ import (
 	"errors"
 	"github.com/andantan/modular-blockchain/codec"
 	"github.com/andantan/modular-blockchain/crypto"
-	"github.com/andantan/modular-blockchain/network/message"
+	"github.com/andantan/modular-blockchain/network"
+	"github.com/andantan/modular-blockchain/network/protocol"
 	"github.com/andantan/modular-blockchain/types"
 	"github.com/andantan/modular-blockchain/util"
 	"github.com/go-kit/log"
@@ -18,6 +19,7 @@ type TcpNode struct {
 
 	listenAddr string
 	listener   net.Listener
+	protocol   string
 
 	privKey *crypto.PrivateKey
 	pubKey  *crypto.PublicKey
@@ -25,7 +27,7 @@ type TcpNode struct {
 
 	peerMap *types.AtomicMap[types.Address, *TcpPeer]
 
-	outgoingMsgCh chan message.Raw
+	outgoingMsgCh chan protocol.Raw
 	closeCh       chan struct{}
 
 	closeOnce sync.Once
@@ -34,10 +36,11 @@ type TcpNode struct {
 func NewTcpNode(privKey *crypto.PrivateKey, listenAddr string) *TcpNode {
 	t := &TcpNode{
 		listenAddr:    listenAddr,
+		protocol:      "tcp",
 		privKey:       privKey,
 		pubKey:        privKey.PublicKey(),
 		address:       privKey.PublicKey().Address(),
-		outgoingMsgCh: make(chan message.Raw, 1000),
+		outgoingMsgCh: make(chan protocol.Raw, 1000),
 		closeCh:       make(chan struct{}),
 		peerMap:       types.NewAtomicMap[types.Address, *TcpPeer](),
 	}
@@ -48,7 +51,7 @@ func NewTcpNode(privKey *crypto.PrivateKey, listenAddr string) *TcpNode {
 }
 
 func (n *TcpNode) Listen() {
-	ln, err := net.Listen("tcp", n.listenAddr)
+	ln, err := net.Listen(n.protocol, n.listenAddr)
 
 	if err != nil {
 		panic(err)
@@ -73,11 +76,11 @@ func (n *TcpNode) Connect(address string) error {
 	return nil
 }
 
-func (n *TcpNode) ConsumeRawMessage() <-chan message.Raw {
+func (n *TcpNode) ConsumeRawMessage() <-chan protocol.Raw {
 	return n.outgoingMsgCh
 }
 
-func (n *TcpNode) Broadcast(msg message.Message) error {
+func (n *TcpNode) Broadcast(msg network.Message) error {
 	payload, err := codec.EncodeProto(msg)
 	if err != nil {
 		return err

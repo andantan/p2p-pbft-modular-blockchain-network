@@ -5,7 +5,7 @@ import (
 	"github.com/andantan/modular-blockchain/core"
 	"github.com/andantan/modular-blockchain/core/block"
 	"github.com/andantan/modular-blockchain/crypto"
-	"github.com/andantan/modular-blockchain/network/message"
+	"github.com/andantan/modular-blockchain/network/consensus"
 	"github.com/andantan/modular-blockchain/types"
 	"github.com/andantan/modular-blockchain/util"
 	"github.com/stretchr/testify/assert"
@@ -172,7 +172,7 @@ func GenerateTestPbftProposer(t *testing.T) *PbftProposer {
 	return p
 }
 
-func GenerateTestPbftConsensusEngine(t *testing.T, valN, bcH int) (*core.Blockchain, []*crypto.PrivateKey, *PbftConsensusEngine, <-chan *block.Block, <-chan message.ConsensusMessage) {
+func GenerateTestPbftConsensusEngine(t *testing.T, valN, bcH int) (*core.Blockchain, []*crypto.PrivateKey, *PbftConsensusEngine, <-chan *block.Block, <-chan consensus.ConsensusMessage) {
 	t.Helper()
 
 	keys := make([]*crypto.PrivateKey, valN)

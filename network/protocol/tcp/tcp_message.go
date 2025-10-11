@@ -115,15 +115,21 @@ func (h *TcpHandshakeMessage) EmptyProto() proto.Message {
 }
 
 type TcpRawMessage struct {
-	from    types.Address
-	payload []byte
+	protocol string
+	from     types.Address
+	payload  []byte
 }
 
 func NewTcpRawMessage(from types.Address, payload []byte) *TcpRawMessage {
 	return &TcpRawMessage{
-		from:    from,
-		payload: payload,
+		protocol: "tcp",
+		from:     from,
+		payload:  payload,
 	}
+}
+
+func (m *TcpRawMessage) Protocol() string {
+	return m.protocol
 }
 
 func (m *TcpRawMessage) From() types.Address {

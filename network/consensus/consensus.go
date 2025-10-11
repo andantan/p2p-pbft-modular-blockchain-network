@@ -1,14 +1,13 @@
-package network
+package consensus
 
 import (
 	"github.com/andantan/modular-blockchain/core/block"
-	"github.com/andantan/modular-blockchain/network/message"
 )
 
 type ConsensusEngine interface {
 	StartEngine()
-	HandleMessage(message.ConsensusMessage)
-	OutgoingMessage() <-chan message.ConsensusMessage
+	HandleMessage(ConsensusMessage)
+	OutgoingMessage() <-chan ConsensusMessage
 	FinalizedBlock() <-chan *block.Block
 	StopEngine()
 }

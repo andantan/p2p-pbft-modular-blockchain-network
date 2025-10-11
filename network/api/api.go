@@ -1,4 +1,4 @@
-package network
+package api
 
 import "github.com/andantan/modular-blockchain/core/block"
 
