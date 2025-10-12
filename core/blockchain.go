@@ -137,11 +137,7 @@ func (bc *Blockchain) Rollback(from uint64) error {
 
 	for h := ch; h >= from; h-- {
 		if err := bc.blockStorer.RemoveBlock(h); err != nil {
-			_ = bc.logger.Log(
-				"error", "failed to remove block from storage",
-				"height", h,
-				"err", err,
-			)
+			_ = bc.logger.Log("msg", "failed to remove block from storage", "height", h, "err", err)
 			return err
 		}
 	}

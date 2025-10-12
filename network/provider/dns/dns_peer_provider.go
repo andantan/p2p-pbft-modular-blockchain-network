@@ -1,10 +1,10 @@
-package provider
+package dns
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/andantan/modular-blockchain/network/message"
+	"github.com/andantan/modular-blockchain/network/provider"
 	"io"
 	"net/http"
 )
@@ -21,23 +21,23 @@ func NewDnsPeerProvider(dnsServerAddr string) *DnsPeerProvider {
 	}
 }
 
-func (p *DnsPeerProvider) DiscoverPeers() ([]*message.PeerInfo, error) {
+func (p *DnsPeerProvider) DiscoverPeers() ([]*provider.PeerInfo, error) {
 	return p.getPeersFromEndpoint("/peers")
 }
 
-func (p *DnsPeerProvider) GetValidators() ([]*message.PeerInfo, error) {
+func (p *DnsPeerProvider) GetValidators() ([]*provider.PeerInfo, error) {
 	return p.getPeersFromEndpoint("/validators")
 }
 
-func (p *DnsPeerProvider) Register(our *message.PeerInfo) error {
+func (p *DnsPeerProvider) Register(our *provider.PeerInfo) error {
 	return p.postJSON("/register", our)
 }
 
-func (p *DnsPeerProvider) Deregister(our *message.PeerInfo) error {
+func (p *DnsPeerProvider) Deregister(our *provider.PeerInfo) error {
 	return p.postJSON("/deregister", our)
 }
 
-func (p *DnsPeerProvider) Heartbeat(our *message.PeerInfo) error {
+func (p *DnsPeerProvider) Heartbeat(our *provider.PeerInfo) error {
 	return p.postJSON("/heartbeat", our)
 }
 
@@ -65,10 +65,10 @@ func (p *DnsPeerProvider) postJSON(endpoint string, data any) error {
 }
 
 type PeerSliceResponse struct {
-	Peers []*message.PeerInfo `json:"peers"`
+	Peers []*provider.PeerInfo `json:"peers"`
 }
 
-func (p *DnsPeerProvider) getPeersFromEndpoint(endpoint string) ([]*message.PeerInfo, error) {
+func (p *DnsPeerProvider) getPeersFromEndpoint(endpoint string) ([]*provider.PeerInfo, error) {
 	url := p.dnsUri + endpoint
 
 	resp, err := http.Get(url)

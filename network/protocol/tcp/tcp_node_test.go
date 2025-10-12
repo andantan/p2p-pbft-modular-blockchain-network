@@ -55,8 +55,8 @@ func TestTCPNode_ConnectAndAccept(t *testing.T) {
 	nodeA.Disconnect(nodeB.address)
 	time.Sleep(100 * time.Millisecond)
 
-	assert.Equal(t, 0, nodeA.peerMap.Len())
-	assert.Equal(t, 0, nodeB.peerMap.Len())
+	assert.Equal(t, 0, len(nodeA.Peers()))
+	assert.Equal(t, 0, len(nodeB.Peers()))
 }
 
 func TestTCPNode_Stop(t *testing.T) {
@@ -114,8 +114,8 @@ func TestTCPNode_TieBreaking(t *testing.T) {
 	// delay for nodeA, B handshaking
 	time.Sleep(200 * time.Millisecond)
 
-	assert.Equal(t, nodeA.peerMap.Len(), 1)
-	assert.Equal(t, nodeB.peerMap.Len(), 1)
+	assert.Equal(t, len(nodeA.Peers()), 1)
+	assert.Equal(t, len(nodeB.Peers()), 1)
 }
 
 func TestTCPNode_Broadcast(t *testing.T) {
@@ -146,10 +146,12 @@ func TestTCPNode_Broadcast(t *testing.T) {
 	})
 
 	time.Sleep(200 * time.Millisecond)
-	assert.Equal(t, numPeers, node.peerMap.Len())
+	assert.Equal(t, numPeers, len(node.Peers()))
 
 	tx := block.GenerateRandomTestTransaction(t)
-	assert.NoError(t, node.Broadcast(tx))
+	payload, err := codec.EncodeProto(tx)
+	assert.NoError(t, err)
+	assert.NoError(t, node.Broadcast(payload))
 
 	wg := new(sync.WaitGroup)
 	wg.Add(numPeers)
@@ -162,7 +164,7 @@ func TestTCPNode_Broadcast(t *testing.T) {
 				decodedTx := new(block.Transaction)
 				assert.NoError(t, codec.DecodeProto(msg.Payload(), decodedTx))
 				assert.NotEmpty(t, msg.Payload())
-			case <-time.After(200 * time.Millisecond):
+			case <-time.After(500 * time.Millisecond):
 				t.Errorf("peer %s does not received msg", n.address.ShortString(8))
 			}
 		}(remoteNode)

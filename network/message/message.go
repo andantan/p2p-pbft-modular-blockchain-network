@@ -5,28 +5,32 @@ import (
 	"github.com/andantan/modular-blockchain/types"
 )
 
-type Raw interface {
-	From() types.Address
-	Payload() []byte
-}
-
 type Message interface {
 	codec.Hasher     // for deterministic
 	codec.Signer     // for verification
 	codec.ProtoCodec // for encoding & decoding
 }
 
-type ConsensusMessage interface {
-	Message
-
-	Address() types.Address
+type RawMessage interface {
+	Protocol() string
+	From() types.Address
+	Payload() []byte // [type, sub-type, data...]
 }
 
-type PeerInfo struct {
-	Address        string `json:"address"`
-	NetAddr        string `json:"net_addr"`
-	Connections    uint8  `json:"connections"`
-	MaxConnections uint8  `json:"max_connections"`
-	Height         uint64 `json:"height"`
-	IsValidator    bool   `json:"is_validator"`
+type DecodedMessage struct {
+	Protocol string
+	From     types.Address
+	Data     any
 }
+
+type MessageType byte
+
+const (
+	MessageGossipType MessageType = iota
+	MessageSyncType
+	MessageConsensusType
+)
+
+type MessageGossipSubType byte
+type MessageSyncSubType byte
+type MessageConsensusSubType byte

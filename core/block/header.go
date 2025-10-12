@@ -103,3 +103,28 @@ func (h *Header) FromProto(msg proto.Message) error {
 func (h *Header) EmptyProto() proto.Message {
 	return &pb.Header{}
 }
+
+func HeadersToProto(hs []*Header) ([]*pb.Header, error) {
+	protoHs := make([]*pb.Header, len(hs))
+	for i, h := range hs {
+		protoH, err := h.ToProto()
+		if err != nil {
+			return nil, err
+		}
+		protoHs[i] = protoH.(*pb.Header)
+	}
+	return protoHs, nil
+}
+
+func HeadersFromProto(protohs []*pb.Header) ([]*Header, error) {
+	headers := make([]*Header, len(protohs))
+	for i, protoH := range protohs {
+		header := new(Header)
+		if err := header.FromProto(protoH); err != nil {
+			return nil, err
+		}
+		headers[i] = header
+	}
+
+	return headers, nil
+}

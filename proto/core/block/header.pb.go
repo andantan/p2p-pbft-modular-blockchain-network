@@ -136,7 +136,7 @@ const file_proto_core_block_header_proto_rawDesc = "" +
 	"\x06weight\x18\x06 \x01(\x04R\x06weight\x12\x1d\n" +
 	"\n" +
 	"state_root\x18\a \x01(\fR\tstateRoot\x12\x14\n" +
-	"\x05nonce\x18\b \x01(\x04R\x05nonceBJZHgithub.com/andantan/p2p-pbft-modular-blockchain-network/proto/core/blockb\x06proto3"
+	"\x05nonce\x18\b \x01(\x04R\x05nonceB9Z7github.com/andantan/modular-blockchain/proto/core/blockb\x06proto3"
 
 var (
 	file_proto_core_block_header_proto_rawDescOnce sync.Once

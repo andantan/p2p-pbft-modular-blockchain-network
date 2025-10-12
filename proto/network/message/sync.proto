@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package message;
+option go_package = "github.com/andantan/modular-blockchain/proto/network/message";
+
+import "proto/core/block/block.proto";
+import "proto/core/block/header.proto";
+
+message RequestStatusMessage {}
+
+message ResponseStatusMessage {
+  bytes address = 1;
+  string net_addr = 2;
+  uint32 version = 3;
+  uint64 height = 4;
+  uint32 state = 5;
+  bytes genesis_block_hash = 6;
+  bytes current_block_hash = 7;
+}
+
+message RequestHeadersMessage {
+  uint64 from = 1;
+  uint64 count = 2;
+}
+
+message ResponseHeadersMessage {
+  repeated block.Header headers = 1;
+}
+
+message RequestBlocksMessage {
+  uint64 from = 1;
+  uint64 count = 2;
+}
+
+message ResponseBlocksMessage {
+  repeated block.Block blocks = 1;
+}

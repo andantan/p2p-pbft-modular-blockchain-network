@@ -31,3 +31,8 @@ func RandomUint64WithMaximun(m int) uint64 {
 func RandomHash() types.Hash {
 	return sha256.Sum256(RandomBytes(types.HashLength))
 }
+
+func RandomAddress() types.Address {
+	h := RandomHash()
+	return types.Address(h[:20])
+}

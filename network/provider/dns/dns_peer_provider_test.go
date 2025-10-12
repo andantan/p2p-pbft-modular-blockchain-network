@@ -1,8 +1,8 @@
-package provider
+package dns
 
 import (
 	"encoding/json"
-	"github.com/andantan/modular-blockchain/network/message"
+	"github.com/andantan/modular-blockchain/network/provider"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
@@ -16,7 +16,7 @@ func TestDnsPeerProvider_Register(t *testing.T) {
 		assert.Equal(t, "/register", r.URL.Path)
 		assert.Equal(t, "POST", r.Method)
 
-		var receivedInfo message.PeerInfo
+		var receivedInfo provider.PeerInfo
 		assert.NoError(t, json.NewDecoder(r.Body).Decode(&receivedInfo))
 		assert.Equal(t, i.Address, receivedInfo.Address)
 		assert.Equal(t, i.NetAddr, receivedInfo.NetAddr)
@@ -28,8 +28,8 @@ func TestDnsPeerProvider_Register(t *testing.T) {
 	}))
 	defer server.Close()
 
-	provider := NewDnsPeerProvider(server.Listener.Addr().String())
-	assert.NoError(t, provider.Register(i))
+	p := NewDnsPeerProvider(server.Listener.Addr().String())
+	assert.NoError(t, p.Register(i))
 }
 
 func TestDnsPeerProvider_Deregister(t *testing.T) {
@@ -38,7 +38,7 @@ func TestDnsPeerProvider_Deregister(t *testing.T) {
 		assert.Equal(t, "/deregister", r.URL.Path)
 		assert.Equal(t, "POST", r.Method)
 
-		var receivedInfo message.PeerInfo
+		var receivedInfo provider.PeerInfo
 		assert.NoError(t, json.NewDecoder(r.Body).Decode(&receivedInfo))
 		assert.Equal(t, i.Address, receivedInfo.Address)
 		assert.Equal(t, i.NetAddr, receivedInfo.NetAddr)
@@ -50,8 +50,8 @@ func TestDnsPeerProvider_Deregister(t *testing.T) {
 	}))
 	defer server.Close()
 
-	provider := NewDnsPeerProvider(server.Listener.Addr().String())
-	assert.NoError(t, provider.Deregister(i))
+	p := NewDnsPeerProvider(server.Listener.Addr().String())
+	assert.NoError(t, p.Deregister(i))
 }
 
 func TestDnsPeerProvider_Heartbeat(t *testing.T) {
@@ -61,7 +61,7 @@ func TestDnsPeerProvider_Heartbeat(t *testing.T) {
 		assert.Equal(t, "/heartbeat", r.URL.Path)
 		assert.Equal(t, "POST", r.Method)
 
-		var receivedInfo message.PeerInfo
+		var receivedInfo provider.PeerInfo
 		assert.NoError(t, json.NewDecoder(r.Body).Decode(&receivedInfo))
 		assert.Equal(t, i.Address, receivedInfo.Address)
 		assert.Equal(t, i.NetAddr, receivedInfo.NetAddr)
@@ -73,13 +73,13 @@ func TestDnsPeerProvider_Heartbeat(t *testing.T) {
 	}))
 	defer server.Close()
 
-	provider := NewDnsPeerProvider(server.Listener.Addr().String())
-	assert.NoError(t, provider.Heartbeat(i))
+	p := NewDnsPeerProvider(server.Listener.Addr().String())
+	assert.NoError(t, p.Heartbeat(i))
 }
 
 func TestDnsPeerProvider_DiscoverPeers(t *testing.T) {
 	peerN := 50
-	expectedPeers := make([]*message.PeerInfo, peerN)
+	expectedPeers := make([]*provider.PeerInfo, peerN)
 	for i := 0; i < peerN; i++ {
 		peer := GenerateRandomPeerInfo(t)
 		expectedPeers[i] = peer
@@ -94,8 +94,8 @@ func TestDnsPeerProvider_DiscoverPeers(t *testing.T) {
 	}))
 	defer server.Close()
 
-	provider := NewDnsPeerProvider(server.Listener.Addr().String())
-	peers, err := provider.DiscoverPeers()
+	p := NewDnsPeerProvider(server.Listener.Addr().String())
+	peers, err := p.DiscoverPeers()
 
 	assert.NoError(t, err)
 	assert.Equal(t, expectedPeers, peers)
@@ -103,7 +103,7 @@ func TestDnsPeerProvider_DiscoverPeers(t *testing.T) {
 
 func TestDnsPeerProvider_GetValidators(t *testing.T) {
 	peerN := 50
-	expectedPeers := make([]*message.PeerInfo, peerN)
+	expectedPeers := make([]*provider.PeerInfo, peerN)
 	for i := 0; i < peerN; i++ {
 		peer := GenerateRandomPeerInfo(t)
 		expectedPeers[i] = peer
@@ -118,8 +118,8 @@ func TestDnsPeerProvider_GetValidators(t *testing.T) {
 	}))
 	defer server.Close()
 
-	provider := NewDnsPeerProvider(server.Listener.Addr().String())
-	validators, err := provider.GetValidators()
+	p := NewDnsPeerProvider(server.Listener.Addr().String())
+	validators, err := p.GetValidators()
 
 	assert.NoError(t, err)
 	assert.Equal(t, expectedPeers, validators)

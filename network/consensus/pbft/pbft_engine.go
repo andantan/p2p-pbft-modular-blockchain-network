@@ -6,7 +6,7 @@ import (
 	"github.com/andantan/modular-blockchain/core"
 	"github.com/andantan/modular-blockchain/core/block"
 	"github.com/andantan/modular-blockchain/crypto"
-	"github.com/andantan/modular-blockchain/network/message"
+	"github.com/andantan/modular-blockchain/network/consensus"
 	"github.com/andantan/modular-blockchain/types"
 	"github.com/andantan/modular-blockchain/util"
 	"github.com/go-kit/log"
@@ -66,8 +66,8 @@ type PbftConsensusEngine struct {
 	viewChangeTimeout time.Duration
 
 	finalizedBlockCh chan *block.Block
-	outgoingMsgCh    chan message.ConsensusMessage
-	internalMsgCh    chan message.ConsensusMessage
+	outgoingMsgCh    chan consensus.ConsensusMessage
+	internalMsgCh    chan consensus.ConsensusMessage
 	closeCh          chan struct{}
 
 	finalizeOnce sync.Once
@@ -97,15 +97,15 @@ func NewPbftConsensusEngine(
 		viewChangeVotes:   types.NewAtomicMap[types.Address, *PbftViewChangeMessage](),
 		viewChangeTimeout: 5 * time.Second,
 		finalizedBlockCh:  make(chan *block.Block, 1),
-		outgoingMsgCh:     make(chan message.ConsensusMessage, 100),
-		internalMsgCh:     make(chan message.ConsensusMessage, 100),
+		outgoingMsgCh:     make(chan consensus.ConsensusMessage, 100),
+		internalMsgCh:     make(chan consensus.ConsensusMessage, 100),
 		closeCh:           make(chan struct{}),
 	}
 
 	return e
 }
 
-func (e *PbftConsensusEngine) StartEngine() {
+func (e *PbftConsensusEngine) Start() {
 	if !e.state.Eq(Initialized) {
 		return
 	}
@@ -116,7 +116,7 @@ func (e *PbftConsensusEngine) StartEngine() {
 	go e.run()
 }
 
-func (e *PbftConsensusEngine) HandleMessage(m message.ConsensusMessage) {
+func (e *PbftConsensusEngine) HandleMessage(m consensus.ConsensusMessage) {
 	if e.state.Gte(Finalized) {
 		return
 	}
@@ -134,7 +134,7 @@ func (e *PbftConsensusEngine) HandleMessage(m message.ConsensusMessage) {
 	}
 }
 
-func (e *PbftConsensusEngine) OutgoingMessage() <-chan message.ConsensusMessage {
+func (e *PbftConsensusEngine) OutgoingMessage() <-chan consensus.ConsensusMessage {
 	return e.outgoingMsgCh
 }
 
@@ -142,7 +142,7 @@ func (e *PbftConsensusEngine) FinalizedBlock() <-chan *block.Block {
 	return e.finalizedBlockCh
 }
 
-func (e *PbftConsensusEngine) StopEngine() {
+func (e *PbftConsensusEngine) Stop() {
 	e.closeOnce.Do(func() {
 		_ = e.logger.Log("msg", "stoping consensus engine", "state", e.state.Get(), "view", e.view.Get(), "sequence", e.sequence)
 
@@ -189,38 +189,43 @@ func (e *PbftConsensusEngine) run() {
 			}
 			timer.Reset(e.viewChangeTimeout)
 
-			var (
-				rm  message.ConsensusMessage
-				err error
-			)
-			switch t := msg.(type) {
-			case *PbftPrePrepareMessage:
-				rm, err = e.handlePrePrepareMessage(t)
-			case *PbftPrepareMessage:
-				rm, err = e.handlePrepareMessage(t)
-			case *PbftCommitMessage:
-				rm, err = e.handleCommitMessage(t)
-			case *PbftViewChangeMessage:
-				rm, err = e.handleViewChangeMessage(t)
-			case *PbftNewViewMessage:
-				rm, err = e.handleNewViewMessage(t)
-			default:
-				rm, err = nil, fmt.Errorf("unknown consensus message (type: %T)", msg)
-			}
-
-			if err != nil {
-				_ = e.logger.Log("msg", err)
-				continue
-			}
-
-			if rm != nil {
-				e.sendToOutgoing(rm)
-			}
+			e.handleConsensusMessage(msg)
 		}
 	}
 }
 
-func (e *PbftConsensusEngine) handlePrePrepareMessage(m *PbftPrePrepareMessage) (message.ConsensusMessage, error) {
+func (e *PbftConsensusEngine) handleConsensusMessage(m consensus.ConsensusMessage) {
+	var (
+		err error
+		cm  consensus.ConsensusMessage
+	)
+
+	switch t := m.(type) {
+	case *PbftPrePrepareMessage:
+		cm, err = e.handlePrePrepareMessage(t)
+	case *PbftPrepareMessage:
+		cm, err = e.handlePrepareMessage(t)
+	case *PbftCommitMessage:
+		cm, err = e.handleCommitMessage(t)
+	case *PbftViewChangeMessage:
+		cm, err = e.handleViewChangeMessage(t)
+	case *PbftNewViewMessage:
+		cm, err = e.handleNewViewMessage(t)
+	default:
+		cm, err = nil, fmt.Errorf("unknown consensus message (type: %T)", m)
+	}
+
+	if err != nil {
+		_ = e.logger.Log("msg", err)
+		return
+	}
+
+	if cm != nil {
+		e.sendToOutgoing(cm)
+	}
+}
+
+func (e *PbftConsensusEngine) handlePrePrepareMessage(m *PbftPrePrepareMessage) (consensus.ConsensusMessage, error) {
 	if e.state.Gte(PrePrepared) {
 		return nil, nil
 	}
@@ -253,7 +258,7 @@ func (e *PbftConsensusEngine) handlePrePrepareMessage(m *PbftPrePrepareMessage) 
 	return msg, nil
 }
 
-func (e *PbftConsensusEngine) handlePrepareMessage(m *PbftPrepareMessage) (message.ConsensusMessage, error) {
+func (e *PbftConsensusEngine) handlePrepareMessage(m *PbftPrepareMessage) (consensus.ConsensusMessage, error) {
 	if e.state.Gte(Prepared) {
 		return nil, nil
 	}
@@ -296,7 +301,7 @@ func (e *PbftConsensusEngine) handlePrepareMessage(m *PbftPrepareMessage) (messa
 	return nil, nil
 }
 
-func (e *PbftConsensusEngine) handleCommitMessage(m *PbftCommitMessage) (message.ConsensusMessage, error) {
+func (e *PbftConsensusEngine) handleCommitMessage(m *PbftCommitMessage) (consensus.ConsensusMessage, error) {
 	if e.state.Gte(Committed) {
 		return nil, nil
 	}
@@ -334,7 +339,7 @@ func (e *PbftConsensusEngine) handleCommitMessage(m *PbftCommitMessage) (message
 	return nil, nil
 }
 
-func (e *PbftConsensusEngine) handleViewChangeMessage(m *PbftViewChangeMessage) (message.ConsensusMessage, error) {
+func (e *PbftConsensusEngine) handleViewChangeMessage(m *PbftViewChangeMessage) (consensus.ConsensusMessage, error) {
 	if e.state.Gte(Finalized) {
 		return nil, nil
 	}
@@ -378,7 +383,7 @@ func (e *PbftConsensusEngine) handleViewChangeMessage(m *PbftViewChangeMessage) 
 	return nil, nil
 }
 
-func (e *PbftConsensusEngine) handleNewViewMessage(m *PbftNewViewMessage) (message.ConsensusMessage, error) {
+func (e *PbftConsensusEngine) handleNewViewMessage(m *PbftNewViewMessage) (consensus.ConsensusMessage, error) {
 	if e.state.Gte(Finalized) {
 		return nil, nil
 	}
@@ -463,7 +468,7 @@ func (e *PbftConsensusEngine) startViewChange() error {
 	return nil
 }
 
-func (e *PbftConsensusEngine) sendToOutgoing(m message.ConsensusMessage) {
+func (e *PbftConsensusEngine) sendToOutgoing(m consensus.ConsensusMessage) {
 	select {
 	case <-e.closeCh:
 		return

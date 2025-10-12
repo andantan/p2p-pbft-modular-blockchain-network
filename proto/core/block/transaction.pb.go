@@ -98,7 +98,7 @@ const file_proto_core_block_transaction_proto_rawDesc = "" +
 	"\x04data\x18\x01 \x01(\fR\x04data\x12\x12\n" +
 	"\x04from\x18\x02 \x01(\fR\x04from\x12\x1c\n" +
 	"\tsignature\x18\x03 \x01(\fR\tsignature\x12\x14\n" +
-	"\x05nonce\x18\x04 \x01(\x04R\x05nonceBJZHgithub.com/andantan/p2p-pbft-modular-blockchain-network/proto/core/blockb\x06proto3"
+	"\x05nonce\x18\x04 \x01(\x04R\x05nonceB9Z7github.com/andantan/modular-blockchain/proto/core/blockb\x06proto3"
 
 var (
 	file_proto_core_block_transaction_proto_rawDescOnce sync.Once

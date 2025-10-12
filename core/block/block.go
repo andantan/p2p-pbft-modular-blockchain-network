@@ -262,3 +262,28 @@ func (b *Block) Seal(votes []*CommitVote, set []types.Address) error {
 
 	return nil
 }
+
+func BlocksToProto(bs []*Block) ([]*pb.Block, error) {
+	protoBs := make([]*pb.Block, len(bs))
+	for i, b := range bs {
+		protoB, err := b.ToProto()
+		if err != nil {
+			return nil, err
+		}
+		protoBs[i] = protoB.(*pb.Block)
+	}
+	return protoBs, nil
+}
+
+func BlocksFromProto(protoBs []*pb.Block) ([]*Block, error) {
+	bs := make([]*Block, len(protoBs))
+	for i, protoB := range protoBs {
+		block := new(Block)
+		if err := block.FromProto(protoB); err != nil {
+			return nil, err
+		}
+		bs[i] = block
+	}
+
+	return bs, nil
+}

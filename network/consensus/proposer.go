@@ -1,4 +1,4 @@
-package network
+package consensus
 
 import (
 	"github.com/andantan/modular-blockchain/core"

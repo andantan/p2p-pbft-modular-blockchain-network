@@ -3,7 +3,7 @@ package pbft
 import (
 	"fmt"
 	"github.com/andantan/modular-blockchain/crypto"
-	"github.com/andantan/modular-blockchain/network/message"
+	"github.com/andantan/modular-blockchain/network/consensus"
 	"github.com/andantan/modular-blockchain/types"
 	"github.com/andantan/modular-blockchain/util"
 	"github.com/go-kit/log"
@@ -28,11 +28,11 @@ func (v *PbftValidator) PublicKey() *crypto.PublicKey {
 	return v.privKey.PublicKey()
 }
 
-func (v *PbftValidator) Sign(msg message.ConsensusMessage) error {
+func (v *PbftValidator) Sign(msg consensus.ConsensusMessage) error {
 	return msg.Sign(v.privKey)
 }
 
-func (v *PbftValidator) Verify(msg message.ConsensusMessage) error {
+func (v *PbftValidator) Verify(msg consensus.ConsensusMessage) error {
 	addr := msg.Address()
 	if !v.validatorSet.Contains(addr) {
 		return fmt.Errorf("received %T from non-validator: %s", msg, addr.ShortString(8))
@@ -49,7 +49,7 @@ func (v *PbftValidator) UpdateValidatorSet(s []types.Address) {
 	v.validatorSet.Reset(s)
 }
 
-func (v *PbftValidator) ProcessConsensusMessage(msg message.ConsensusMessage) error {
+func (v *PbftValidator) ProcessConsensusMessage(msg consensus.ConsensusMessage) error {
 	if err := v.Verify(msg); err != nil {
 		return err
 	}

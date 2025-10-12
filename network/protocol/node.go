@@ -1,4 +1,4 @@
-package network
+package protocol
 
 import (
 	"github.com/andantan/modular-blockchain/network/message"
@@ -8,8 +8,10 @@ import (
 type Node interface {
 	Listen()
 	Connect(string) error
-	ConsumeRawMessage() <-chan message.Raw
-	Broadcast(message.Message) error
+	ConsumeRawMessage() <-chan message.RawMessage
+	Send(types.Address, []byte) error
+	Broadcast([]byte) error
+	Peers() []types.Address
 	Disconnect(types.Address)
 	Close()
 }

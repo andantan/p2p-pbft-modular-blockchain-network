@@ -30,6 +30,11 @@ func TestBlockchain_AddBlock(t *testing.T) {
 	assert.Equal(t, uint64(1), bc.GetCurrentHeight())
 	assert.True(t, bc.HasBlockHash(h1))
 	assert.True(t, bc.HasBlockHeight(bc.GetCurrentHeight()))
+	sb1, err := bc.GetCurrentBlock()
+	assert.NoError(t, err)
+	sh1, err := sb1.Hash()
+	assert.NoError(t, err)
+	assert.True(t, h1.Equal(sh1))
 
 	// Case: ErrBlockKnown
 	assert.ErrorIs(t, bc.AddBlock(b1), ErrBlockKnown)

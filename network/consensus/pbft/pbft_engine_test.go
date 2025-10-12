@@ -2,7 +2,7 @@ package pbft
 
 import (
 	"github.com/andantan/modular-blockchain/core/block"
-	"github.com/andantan/modular-blockchain/network/message"
+	"github.com/andantan/modular-blockchain/network/consensus"
 	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
@@ -18,7 +18,7 @@ func TestPbftConsensusEngine_HandlePrePrepare(t *testing.T) {
 	ppMsg := NewPbftPrePrepareMessage(0, b.Header.Height, b, leaderKey.PublicKey())
 	assert.NoError(t, ppMsg.Sign(leaderKey))
 
-	engine.StartEngine()
+	engine.Start()
 
 	go engine.HandleMessage(ppMsg)
 
@@ -32,7 +32,7 @@ func TestPbftConsensusEngine_HandlePrePrepare(t *testing.T) {
 		t.Fatal("engine does not send PrePrepareMessage to channel")
 	}
 
-	engine.StopEngine()
+	engine.Stop()
 }
 
 func TestPbftConsensusEngine_HandlePrepare(t *testing.T) {
@@ -45,10 +45,10 @@ func TestPbftConsensusEngine_HandlePrepare(t *testing.T) {
 	ppMsg := NewPbftPrePrepareMessage(0, uint64(ih), b, leaderKey.PublicKey())
 	assert.NoError(t, ppMsg.Sign(leaderKey))
 
-	engine.StartEngine()
+	engine.Start()
 
 	var wg sync.WaitGroup
-	handler := func(msg message.ConsensusMessage) {
+	handler := func(msg consensus.ConsensusMessage) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -92,7 +92,7 @@ func TestPbftConsensusEngine_HandlePrepare(t *testing.T) {
 
 	wg.Wait()
 
-	engine.StopEngine()
+	engine.Stop()
 }
 
 func TestPbftConsensusEngine_HandleCommit(t *testing.T) {
@@ -107,10 +107,10 @@ func TestPbftConsensusEngine_HandleCommit(t *testing.T) {
 	ppMsg := NewPbftPrePrepareMessage(0, height, b, leaderKey.PublicKey())
 	assert.NoError(t, ppMsg.Sign(leaderKey))
 
-	engine.StartEngine()
+	engine.Start()
 
 	var wg sync.WaitGroup
-	handler := func(msg message.ConsensusMessage) {
+	handler := func(msg consensus.ConsensusMessage) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -173,7 +173,7 @@ func TestPbftConsensusEngine_HandleCommit(t *testing.T) {
 
 	wg.Wait()
 
-	engine.StopEngine()
+	engine.Stop()
 	assert.True(t, engine.state.Eq(Terminated))
 }
 
@@ -183,7 +183,7 @@ func TestPbftConsensusEngine_ViewChange(t *testing.T) {
 
 	t.Cleanup(func() {
 		for _, engine := range engines {
-			engine.StopEngine()
+			engine.Stop()
 		}
 	})
 
@@ -194,12 +194,12 @@ func TestPbftConsensusEngine_ViewChange(t *testing.T) {
 		assert.Equal(t, sequence, engine.sequence)
 	}
 
-	igMsgCh := make(chan message.ConsensusMessage, 100)
+	igMsgCh := make(chan consensus.ConsensusMessage, 100)
 	igFbCh := make(chan *block.Block, 100)
 
 	for _, engine := range engines {
 		go func(e *PbftConsensusEngine) {
-			e.StartEngine()
+			e.Start()
 
 			msgCh := e.OutgoingMessage()
 			fbCh := e.FinalizedBlock()
@@ -225,7 +225,7 @@ func TestPbftConsensusEngine_ViewChange(t *testing.T) {
 	}
 
 	var wg sync.WaitGroup
-	handler := func(engine *PbftConsensusEngine, msg message.ConsensusMessage) {
+	handler := func(engine *PbftConsensusEngine, msg consensus.ConsensusMessage) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

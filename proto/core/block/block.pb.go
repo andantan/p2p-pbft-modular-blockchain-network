@@ -117,7 +117,7 @@ const file_proto_core_block_block_proto_rawDesc = "" +
 	"\x04body\x18\x03 \x01(\v2\v.block.BodyR\x04body\x12\x1f\n" +
 	"\x04tail\x18\x04 \x01(\v2\v.block.TailR\x04tail\x12\x1a\n" +
 	"\bproposer\x18\x05 \x01(\fR\bproposer\x12\x1c\n" +
-	"\tsignature\x18\x06 \x01(\fR\tsignatureBJZHgithub.com/andantan/p2p-pbft-modular-blockchain-network/proto/core/blockb\x06proto3"
+	"\tsignature\x18\x06 \x01(\fR\tsignatureB9Z7github.com/andantan/modular-blockchain/proto/core/blockb\x06proto3"
 
 var (
 	file_proto_core_block_block_proto_rawDescOnce sync.Once

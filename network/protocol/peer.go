@@ -1,4 +1,4 @@
-package network
+package protocol
 
 import (
 	"github.com/andantan/modular-blockchain/crypto"
@@ -13,5 +13,5 @@ type Peer interface {
 	PublicKey() *crypto.PublicKey
 	Address() types.Address
 	NetAddr() string
-	ConsumeRawMessage() <-chan message.Raw
+	ConsumeRawMessage() <-chan message.RawMessage
 }

@@ -488,7 +488,7 @@ const file_proto_network_consensus_pbft_pbft_proto_rawDesc = "" +
 	"\x06digest\x18\x05 \x01(\fR\x06digest\x12\x1d\n" +
 	"\n" +
 	"public_key\x18\x06 \x01(\fR\tpublicKey\x12\x1c\n" +
-	"\tsignature\x18\a \x01(\fR\tsignatureBVZTgithub.com/andantan/p2p-pbft-modular-blockchain-network/proto/network/consensus/pbftb\x06proto3"
+	"\tsignature\x18\a \x01(\fR\tsignatureBEZCgithub.com/andantan/modular-blockchain/proto/network/consensus/pbftb\x06proto3"
 
 var (
 	file_proto_network_consensus_pbft_pbft_proto_rawDescOnce sync.Once

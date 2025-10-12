@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package pbft;
-option go_package = "github.com/andantan/p2p-pbft-modular-blockchain-network/proto/network/consensus/pbft";
+option go_package = "github.com/andantan/modular-blockchain/proto/network/consensus/pbft";
 
 import "proto/core/block/block.proto";
 
