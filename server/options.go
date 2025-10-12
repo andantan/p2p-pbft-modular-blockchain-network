@@ -58,16 +58,44 @@ func (o *NetworkOptions) WithSyncMessageCodec(c synchronizer.SyncMessageCodec) *
 }
 
 func (o *NetworkOptions) IsFulFilled() bool {
-	return o.MaxPeers > 0 && o.Node != nil && o.ApiServer != nil && o.Provider == nil && o.GossipMessageCodec != nil && o.Synchronizer != nil && o.SyncMessageCodec != nil
+	if o.MaxPeers <= 0 {
+		return false
+	}
+
+	if o.Node == nil {
+		return false
+	}
+
+	if o.ApiServer == nil {
+		return false
+	}
+
+	if o.Provider == nil {
+		return false
+	}
+
+	if o.GossipMessageCodec == nil {
+		return false
+	}
+
+	if o.Synchronizer == nil {
+		return false
+	}
+
+	if o.SyncMessageCodec == nil {
+		return false
+	}
+
+	return true
 }
 
 type BlockchainOptions struct {
-	Storer             core.Storer
-	Chain              core.Chain
-	BlockTime          time.Duration
-	MemoryPool         core.VirtualMemoryPool
-	MemoryPoolCapacity int
-	Processor          core.Processor
+	Storer            core.Storer
+	Chain             core.Chain
+	BlockTime         time.Duration
+	VirtualMemoryPool core.VirtualMemoryPool
+	Capacity          int
+	Processor         core.Processor
 }
 
 func NewBlockchainOptions() *BlockchainOptions {
@@ -85,9 +113,9 @@ func (o *BlockchainOptions) WithChain(chain core.Chain, blockTime time.Duration)
 	return o
 }
 
-func (o *BlockchainOptions) WithMemoryPool(memoryPool core.VirtualMemoryPool, capacity int) *BlockchainOptions {
-	o.MemoryPool = memoryPool
-	o.MemoryPoolCapacity = capacity
+func (o *BlockchainOptions) WithVirtualMemoryPool(mp core.VirtualMemoryPool, capacity int) *BlockchainOptions {
+	o.VirtualMemoryPool = mp
+	o.Capacity = capacity
 	return o
 }
 
@@ -97,7 +125,31 @@ func (o *BlockchainOptions) WithProcessor(p core.Processor) *BlockchainOptions {
 }
 
 func (o *BlockchainOptions) IsFulFilled() bool {
-	return o.Storer != nil && o.Chain != nil && o.BlockTime > 0 && o.MemoryPool != nil && o.MemoryPoolCapacity != 0 && o.Processor != nil
+	if o.Storer == nil {
+		return false
+	}
+
+	if o.Chain == nil {
+		return false
+	}
+
+	if o.BlockTime <= 0 {
+		return false
+	}
+
+	if o.VirtualMemoryPool == nil {
+		return false
+	}
+
+	if o.Capacity <= 0 {
+		return false
+	}
+
+	if o.Processor == nil {
+		return false
+	}
+
+	return true
 }
 
 type ConsensusOptions struct {
@@ -107,13 +159,16 @@ type ConsensusOptions struct {
 }
 
 func NewConsensusOptions() *ConsensusOptions {
-	return &ConsensusOptions{
-		ConsensusEngines: make(map[uint64]consensus.ConsensusEngine),
-	}
+	return &ConsensusOptions{}
 }
 
 func (o *ConsensusOptions) WithProposer(p consensus.Proposer) *ConsensusOptions {
 	o.Proposer = p
+	return o
+}
+
+func (o *ConsensusOptions) WithConsensusEngine(engines map[uint64]consensus.ConsensusEngine) *ConsensusOptions {
+	o.ConsensusEngines = engines
 	return o
 }
 
@@ -123,7 +178,19 @@ func (o *ConsensusOptions) WithConsensusMessageCodec(c consensus.ConsensusMessag
 }
 
 func (o *ConsensusOptions) IsFulFilled() bool {
-	return o.Proposer != nil && o.ConsensusEngines != nil && o.ConsensusMessageCodec != nil
+	if o.Proposer == nil {
+		return false
+	}
+
+	if o.ConsensusEngines == nil {
+		return false
+	}
+
+	if o.ConsensusMessageCodec == nil {
+		return false
+	}
+
+	return true
 }
 
 type ServerOptions struct {
@@ -155,5 +222,17 @@ func (o *ServerOptions) WithApiListenAddr(apiListenAddr string) *ServerOptions {
 }
 
 func (o *ServerOptions) IsFulFilled() bool {
-	return o.PrivateKey != nil && o.ListenAddr != "" && o.ApiListenAddr != ""
+	if o.PrivateKey == nil {
+		return false
+	}
+
+	if o.ListenAddr == "" {
+		return false
+	}
+
+	if o.ApiListenAddr == "" {
+		return false
+	}
+
+	return true
 }

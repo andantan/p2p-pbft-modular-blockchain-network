@@ -18,11 +18,11 @@ func GenerateTestTCPHandshakeMessage(t *testing.T, addr string) (*TcpHandshakeMe
 	return msg, privKey
 }
 
-func GenerateTestTcpNode(t *testing.T, listenAddr string) *TcpNode {
+func GenerateTestTcpNode(t *testing.T, listenAddr string, max int) *TcpNode {
 	t.Helper()
 
 	privKeyA, err := crypto.GeneratePrivateKey()
 	assert.NoError(t, err)
 
-	return NewTcpNode(privKeyA, listenAddr, 5)
+	return NewTcpNode(privKeyA, listenAddr, max)
 }

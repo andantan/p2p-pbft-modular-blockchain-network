@@ -1,7 +1,10 @@
 package server
 
 import (
+	"errors"
 	"fmt"
+	"github.com/andantan/modular-blockchain/core"
+	"github.com/andantan/modular-blockchain/core/block"
 	"github.com/andantan/modular-blockchain/crypto"
 	"github.com/andantan/modular-blockchain/network/message"
 	"github.com/andantan/modular-blockchain/network/provider"
@@ -20,10 +23,7 @@ type ServerState byte
 const (
 	Initialized ServerState = iota
 	Bootstrap
-	Syncing
 	Online
-	Forked
-	InConsensus
 	Offline
 )
 
@@ -33,14 +33,8 @@ func (s ServerState) String() string {
 		return "Initialized"
 	case Bootstrap:
 		return "BOOTSTRAP"
-	case Syncing:
-		return "SYNCING"
 	case Online:
 		return "ONLINE"
-	case Forked:
-		return "FORKED"
-	case InConsensus:
-		return "IN_CONSENSUS"
 	case Offline:
 		return "OFFLINE"
 	default:
@@ -284,53 +278,137 @@ func (s *Server) loop() {
 		case <-s.closeCh:
 			return
 		case msg := <-rawMsgCh:
-			if err := s.processMessage(msg); err != nil {
-				_ = s.logger.Log("msg", "failed to process message", "err", err)
-				continue
-			}
+			s.processMessage(msg)
 
 			// case tx := <-apiTxCh:
 		}
 	}
 }
 
-func (s *Server) processMessage(rm message.RawMessage) error {
+func (s *Server) processMessage(rm message.RawMessage) {
 	msgType := message.MessageType(rm.Payload()[0])
 	switch msgType {
 	case message.MessageGossipType:
-		return s.processGossipMessage(rm)
+		s.processGossipMessage(rm)
 	case message.MessageSyncType:
-		return s.processSyncMessage(rm)
+		s.processSyncMessage(rm)
 	case message.MessageConsensusType:
-		return s.processConsensusMessage(rm)
-	default:
-		return fmt.Errorf("unknown message type: %d", msgType)
+		s.processConsensusMessage(rm)
 	}
 }
 
-func (s *Server) processGossipMessage(rm message.RawMessage) error {
-	_, err := s.GossipMessageCodec.Decode(rm.Payload())
+func (s *Server) processGossipMessage(rm message.RawMessage) {
+	m, err := s.GossipMessageCodec.Decode(rm.Payload())
 	if err != nil {
-		return err
+		return
 	}
 
-	return nil
+	gossip := false
+	switch t := m.(type) {
+	case *block.Transaction:
+		if gossip, err = s.processTransaction(rm.From(), t); err != nil {
+			switch {
+			case errors.Is(err, core.ErrMempoolFull):
+				_ = s.logger.Log("msg", "virtual memory pool is fulled", "err", err)
+			default:
+				_ = s.logger.Log("msg", "failed to process transaction", "err", err)
+			}
+		}
+	case *block.Block:
+		if gossip, err = s.processBlock(rm.From(), t); err != nil {
+			switch {
+			case errors.Is(err, core.ErrBlockKnown):
+				break
+			case errors.Is(err, core.ErrFutureBlock):
+				s.Synchronizer.NotifyChainLagging()
+			case errors.Is(err, core.ErrUnknownParent):
+				s.Synchronizer.NotifyForkDetected(rm.From(), t)
+			default:
+				_ = s.logger.Log("msg", "failed to process block", "err", err)
+			}
+		}
+	}
+
+	if err != nil {
+		return
+	}
+
+	if gossip {
+		payload, err := s.GossipMessageCodec.Encode(m)
+
+		if err != nil {
+			_ = s.logger.Log("error", "failed to re-encode gossip message", "err", err)
+			return
+		}
+
+		go func() {
+			_ = s.Node.Broadcast(payload)
+		}()
+	}
 }
 
-func (s *Server) processSyncMessage(rm message.RawMessage) error {
+func (s *Server) processSyncMessage(rm message.RawMessage) {
 	_, err := s.SyncMessageCodec.Decode(rm.Payload())
 	if err != nil {
-		return err
+		return
 	}
-
-	return nil
 }
 
-func (s *Server) processConsensusMessage(rm message.RawMessage) error {
+func (s *Server) processConsensusMessage(rm message.RawMessage) {
 	_, err := s.ConsensusMessageCodec.Decode(rm.Payload())
 	if err != nil {
-		return err
+		return
+	}
+}
+
+func (s *Server) processTransaction(from types.Address, tx *block.Transaction) (bool, error) {
+	if !s.state.Eq(Online) {
+		return false, nil
 	}
 
-	return nil
+	_ = s.logger.Log("msg", "processing transaction", "from", from.ShortString(8))
+
+	if _, err := tx.Hash(); err != nil {
+		return false, err
+	}
+
+	if err := tx.Verify(); err != nil {
+		return false, err
+	}
+
+	if s.VirtualMemoryPool.Contains(tx) {
+		return false, nil
+	}
+
+	tx.FirstSeen()
+
+	if err := s.VirtualMemoryPool.Put(tx); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func (s *Server) processBlock(from types.Address, b *block.Block) (bool, error) {
+	if !s.state.Eq(Online) {
+		return false, nil
+	}
+
+	_ = s.logger.Log("msg", "processing block", "from", from.ShortString(8), "height", b.Header.Height)
+
+	if _, err := b.Hash(); err != nil {
+		return false, err
+	}
+
+	if err := b.Verify(); err != nil {
+		return false, err
+	}
+
+	if err := s.Chain.AddBlock(b); err != nil {
+		return false, err
+	}
+
+	s.VirtualMemoryPool.Prune(b.Body.Transactions)
+
+	return true, nil
 }

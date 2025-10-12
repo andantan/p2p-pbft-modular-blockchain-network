@@ -160,6 +160,13 @@ func (n *TcpNode) acceptLoop() {
 				return
 			default:
 				conn, err := n.listener.Accept()
+
+				if n.peerMap.Len() >= n.maxPeers {
+					_ = n.logger.Log("msg", "max peers reached, rejecting new connection", "peer_net_addr", conn.RemoteAddr())
+					_ = conn.Close()
+					continue
+				}
+
 				if err != nil {
 					errCh <- err
 					return
@@ -174,12 +181,6 @@ func (n *TcpNode) acceptLoop() {
 		case conn, ok := <-acceptCh:
 			if !ok {
 				return
-			}
-
-			if n.peerMap.Len() >= n.maxPeers {
-				_ = n.logger.Log("msg", "max peers reached, rejecting new connection", "peer_net_addr", conn.RemoteAddr())
-				_ = conn.Close()
-				continue
 			}
 
 			_ = n.logger.Log("msg", "new connection invoked. starting handshaking", "peer_net_addr", conn.RemoteAddr())

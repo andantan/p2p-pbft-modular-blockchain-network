@@ -76,7 +76,15 @@ func TestChainSynchronizer_Synchronize(t *testing.T) {
 	}
 
 	s1.HandleMessage(s2.address, s2ResBlocksMsg)
-	time.Sleep(200 * time.Millisecond)
+
+	ticker := time.NewTicker(50 * time.Millisecond)
+	for {
+		<-ticker.C
+		if bc1.GetCurrentHeight() == uint64(10) {
+			break
+		}
+	}
+	ticker.Stop()
 
 	assert.Equal(t, bc1.GetCurrentHeight(), bc2.GetCurrentHeight())
 

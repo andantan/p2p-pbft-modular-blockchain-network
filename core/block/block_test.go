@@ -73,7 +73,7 @@ func TestBlock_Seal(t *testing.T) {
 		}
 
 		assert.NoError(t, b.Seal(votes, addrs))
-		assert.NotNil(t, b.Tail)
+		assert.True(t, b.IsConsented())
 		assert.Equal(t, quorum, len(b.Tail.CommitVotes))
 
 		err = b.Seal(votes, addrs)
@@ -93,6 +93,7 @@ func TestBlock_Seal(t *testing.T) {
 
 		invalidVotes := votes[:quorum-1]
 		err = b.Seal(invalidVotes, addrs)
+		assert.False(t, b.IsConsented())
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "not enough commit votes")
 	})
@@ -109,6 +110,7 @@ func TestBlock_Seal(t *testing.T) {
 
 		votes[0] = GenerateRandomTestCommitVote(t, bh.Bytes(), 0, b.Header.Height)
 		err = b.Seal(votes, addrs)
+		assert.False(t, b.IsConsented())
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "non-validator")
 	})
@@ -117,13 +119,16 @@ func TestBlock_Seal(t *testing.T) {
 func TestBlock_EncodeDecode_WithTail(t *testing.T) {
 	privKey, _ := crypto.GeneratePrivateKey()
 	b := GenerateRandomTestBlock(t, 1<<4)
+	assert.False(t, b.IsConsented())
 	bh, err := b.Hash()
 	assert.NoError(t, err)
 	assert.NoError(t, b.Sign(privKey))
+	assert.False(t, b.IsConsented())
 
 	vote := GenerateRandomTestCommitVoteWithKey(t, bh.Bytes(), 0, b.Header.Height, privKey)
 	validatorAddr := privKey.PublicKey().Address()
 	assert.NoError(t, b.Seal([]*CommitVote{vote}, []types.Address{validatorAddr}))
+	assert.True(t, b.IsConsented())
 	assert.NotNil(t, b.Tail)
 
 	encodedBytes, err := codec.EncodeProto(b)
@@ -139,4 +144,5 @@ func TestBlock_EncodeDecode_WithTail(t *testing.T) {
 	assert.NotNil(t, decodedBlock.Tail)
 	assert.Equal(t, 1, len(decodedBlock.Tail.CommitVotes))
 	assert.True(t, b.Tail.CommitVotes[0].PublicKey.Equal(decodedBlock.Tail.CommitVotes[0].PublicKey))
+	assert.True(t, decodedBlock.IsConsented())
 }
