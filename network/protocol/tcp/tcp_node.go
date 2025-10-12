@@ -85,6 +85,21 @@ func (n *TcpNode) ConsumeRawMessage() <-chan message.RawMessage {
 	return n.outgoingMsgCh
 }
 
+func (n *TcpNode) Send(addr types.Address, payload []byte) error {
+	peer, ok := n.peerMap.Get(addr)
+	if !ok {
+		return fmt.Errorf("peer %s not found", addr)
+	}
+
+	go func(p *TcpPeer) {
+		if err := p.Send(payload); err != nil {
+			_ = n.logger.Log("error", "failed to send message to peer", "peer_net_addr", p.NetAddr(), "peer_address", p.Address(), "err", err)
+		}
+	}(peer)
+
+	return nil
+}
+
 func (n *TcpNode) Broadcast(payload []byte) error {
 	n.peerMap.Range(func(addr types.Address, peer *TcpPeer) bool {
 		go func(p *TcpPeer) {

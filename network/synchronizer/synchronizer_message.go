@@ -1,12 +1,17 @@
-package message
+package synchronizer
 
 import (
 	"fmt"
+	"github.com/andantan/modular-blockchain/codec"
 	"github.com/andantan/modular-blockchain/core/block"
 	pbSync "github.com/andantan/modular-blockchain/proto/network/message"
 	"github.com/andantan/modular-blockchain/types"
 	"google.golang.org/protobuf/proto"
 )
+
+type SyncMessage interface {
+	codec.ProtoCodec
+}
 
 type RequestStatusMessage struct{}
 
@@ -223,4 +228,15 @@ func (m *ResponseBlocksMessage) FromProto(msg proto.Message) error {
 
 func (m *ResponseBlocksMessage) EmptyProto() proto.Message {
 	return &pbSync.ResponseBlocksMessage{}
+}
+
+type SynchronizerMessage interface{}
+
+type DirectedMessage struct {
+	To      types.Address
+	Message SyncMessage
+}
+
+type BroadcastMessage struct {
+	Message SyncMessage
 }

@@ -18,7 +18,7 @@ func TestPbftConsensusEngine_HandlePrePrepare(t *testing.T) {
 	ppMsg := NewPbftPrePrepareMessage(0, b.Header.Height, b, leaderKey.PublicKey())
 	assert.NoError(t, ppMsg.Sign(leaderKey))
 
-	engine.StartEngine()
+	engine.Start()
 
 	go engine.HandleMessage(ppMsg)
 
@@ -32,7 +32,7 @@ func TestPbftConsensusEngine_HandlePrePrepare(t *testing.T) {
 		t.Fatal("engine does not send PrePrepareMessage to channel")
 	}
 
-	engine.StopEngine()
+	engine.Stop()
 }
 
 func TestPbftConsensusEngine_HandlePrepare(t *testing.T) {
@@ -45,7 +45,7 @@ func TestPbftConsensusEngine_HandlePrepare(t *testing.T) {
 	ppMsg := NewPbftPrePrepareMessage(0, uint64(ih), b, leaderKey.PublicKey())
 	assert.NoError(t, ppMsg.Sign(leaderKey))
 
-	engine.StartEngine()
+	engine.Start()
 
 	var wg sync.WaitGroup
 	handler := func(msg consensus.ConsensusMessage) {
@@ -92,7 +92,7 @@ func TestPbftConsensusEngine_HandlePrepare(t *testing.T) {
 
 	wg.Wait()
 
-	engine.StopEngine()
+	engine.Stop()
 }
 
 func TestPbftConsensusEngine_HandleCommit(t *testing.T) {
@@ -107,7 +107,7 @@ func TestPbftConsensusEngine_HandleCommit(t *testing.T) {
 	ppMsg := NewPbftPrePrepareMessage(0, height, b, leaderKey.PublicKey())
 	assert.NoError(t, ppMsg.Sign(leaderKey))
 
-	engine.StartEngine()
+	engine.Start()
 
 	var wg sync.WaitGroup
 	handler := func(msg consensus.ConsensusMessage) {
@@ -173,7 +173,7 @@ func TestPbftConsensusEngine_HandleCommit(t *testing.T) {
 
 	wg.Wait()
 
-	engine.StopEngine()
+	engine.Stop()
 	assert.True(t, engine.state.Eq(Terminated))
 }
 
@@ -183,7 +183,7 @@ func TestPbftConsensusEngine_ViewChange(t *testing.T) {
 
 	t.Cleanup(func() {
 		for _, engine := range engines {
-			engine.StopEngine()
+			engine.Stop()
 		}
 	})
 
@@ -199,7 +199,7 @@ func TestPbftConsensusEngine_ViewChange(t *testing.T) {
 
 	for _, engine := range engines {
 		go func(e *PbftConsensusEngine) {
-			e.StartEngine()
+			e.Start()
 
 			msgCh := e.OutgoingMessage()
 			fbCh := e.FinalizedBlock()

@@ -9,6 +9,7 @@ type Node interface {
 	Listen()
 	Connect(string) error
 	ConsumeRawMessage() <-chan message.RawMessage
+	Send(types.Address, []byte) error
 	Broadcast([]byte) error
 	Peers() []types.Address
 	Disconnect(types.Address)

@@ -1,4 +1,4 @@
-package message
+package synchronizer
 
 import (
 	"github.com/andantan/modular-blockchain/codec"

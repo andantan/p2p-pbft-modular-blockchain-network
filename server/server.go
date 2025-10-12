@@ -2,8 +2,6 @@ package server
 
 import (
 	"fmt"
-	"github.com/andantan/modular-blockchain/codec"
-	"github.com/andantan/modular-blockchain/core/block"
 	"github.com/andantan/modular-blockchain/crypto"
 	"github.com/andantan/modular-blockchain/network/message"
 	"github.com/andantan/modular-blockchain/network/provider"
@@ -125,7 +123,7 @@ func (s *Server) Stop() {
 		_ = s.logger.Log("msg", "api server is shutting down")
 
 		for _, engine := range s.ConsensusEngines {
-			engine.StartEngine()
+			engine.Stop()
 		}
 		_ = s.logger.Log("msg", "consensus engines are shutting down")
 
@@ -278,97 +276,61 @@ func (s *Server) loop() {
 	s.state.Set(Online)
 	_ = s.logger.Log("msg", "server is online")
 
-	//rawMsgCh := s.Node.ConsumeRawMessage()
-	//apiTxCh := s.ApiServer.ConsumeTransaction()
+	rawMsgCh := s.Node.ConsumeRawMessage()
+	// apiTxCh := s.ApiServer.ConsumeTransaction()
 
 	for {
 		select {
 		case <-s.closeCh:
 			return
-			//case msg := <-rawMsgCh:
-			//case tx := <-apiTxCh:
+		case msg := <-rawMsgCh:
+			if err := s.processMessage(msg); err != nil {
+				_ = s.logger.Log("msg", "failed to process message", "err", err)
+				continue
+			}
+
+			// case tx := <-apiTxCh:
 		}
 	}
 }
 
-func (s *Server) EncodeP2PMessage(o codec.ProtoCodec) ([]byte, error) {
-	msgType := message.MessageP2PType
-
-	var subType message.MessageP2PSubType
-	switch t := o.(type) {
-	case *block.Transaction:
-		subType = message.MessageP2PSubTypeTransaction
-	case *block.Block:
-		subType = message.MessageP2PSubTypeBlock
-	case *message.RequestStatusMessage:
-		subType = message.MessageP2PSubTypeRequestStatus
-	case *message.ResponseStatusMessage:
-		subType = message.MessageP2PSubTypeResponseStatus
-	case *message.RequestHeadersMessage:
-		subType = message.MessageP2PSubTypeRequestHeaders
-	case *message.ResponseHeadersMessage:
-		subType = message.MessageP2PSubTypeResponseHeaders
-	case *message.RequestBlocksMessage:
-		subType = message.MessageP2PSubTypeRequestBlocks
-	case *message.ResponseBlocksMessage:
-		subType = message.MessageP2PSubTypeResponseBlocks
+func (s *Server) processMessage(rm message.RawMessage) error {
+	msgType := message.MessageType(rm.Payload()[0])
+	switch msgType {
+	case message.MessageGossipType:
+		return s.processGossipMessage(rm)
+	case message.MessageSyncType:
+		return s.processSyncMessage(rm)
+	case message.MessageConsensusType:
+		return s.processConsensusMessage(rm)
 	default:
-		return nil, fmt.Errorf("unknown p2p message type: %T", t)
+		return fmt.Errorf("unknown message type: %d", msgType)
 	}
-
-	data, err := codec.EncodeProto(o)
-	if err != nil {
-		return nil, err
-	}
-
-	payload := make([]byte, 0)
-	payload = append(payload, byte(msgType))
-	payload = append(payload, byte(subType))
-	payload = append(payload, data...)
-
-	return payload, nil
 }
 
-func (s *Server) DecodeP2PMessage(m message.RawMessage) (*message.DecodedMessage, error) {
-	payload := m.Payload()
-	msgType := payload[0]
-
-	if message.MessageType(msgType) != message.MessageP2PType {
-		return nil, fmt.Errorf("invalid message type %d", msgType)
+func (s *Server) processGossipMessage(rm message.RawMessage) error {
+	_, err := s.GossipMessageCodec.Decode(rm.Payload())
+	if err != nil {
+		return err
 	}
 
-	subType := message.MessageP2PSubType(payload[1])
-	data := payload[2:]
+	return nil
+}
 
-	var o codec.ProtoCodec
-	switch subType {
-	case message.MessageP2PSubTypeTransaction:
-		o = new(block.Transaction)
-	case message.MessageP2PSubTypeBlock:
-		o = new(block.Block)
-	case message.MessageP2PSubTypeRequestStatus:
-		o = new(message.RequestStatusMessage)
-	case message.MessageP2PSubTypeResponseStatus:
-		o = new(message.ResponseStatusMessage)
-	case message.MessageP2PSubTypeRequestHeaders:
-		o = new(message.RequestHeadersMessage)
-	case message.MessageP2PSubTypeResponseHeaders:
-		o = new(message.ResponseHeadersMessage)
-	case message.MessageP2PSubTypeRequestBlocks:
-		o = new(message.RequestBlocksMessage)
-	case message.MessageP2PSubTypeResponseBlocks:
-		o = new(message.ResponseBlocksMessage)
-	default:
-		return nil, fmt.Errorf("invalid message type [%d, %d]", msgType, subType)
+func (s *Server) processSyncMessage(rm message.RawMessage) error {
+	_, err := s.SyncMessageCodec.Decode(rm.Payload())
+	if err != nil {
+		return err
 	}
 
-	if err := codec.DecodeProto(data, o); err != nil {
-		return nil, err
+	return nil
+}
+
+func (s *Server) processConsensusMessage(rm message.RawMessage) error {
+	_, err := s.ConsensusMessageCodec.Decode(rm.Payload())
+	if err != nil {
+		return err
 	}
 
-	return &message.DecodedMessage{
-		Protocol: m.Protocol(),
-		From:     m.From(),
-		Data:     o,
-	}, nil
+	return nil
 }

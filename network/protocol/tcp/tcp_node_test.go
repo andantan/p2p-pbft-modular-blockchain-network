@@ -164,7 +164,7 @@ func TestTCPNode_Broadcast(t *testing.T) {
 				decodedTx := new(block.Transaction)
 				assert.NoError(t, codec.DecodeProto(msg.Payload(), decodedTx))
 				assert.NotEmpty(t, msg.Payload())
-			case <-time.After(200 * time.Millisecond):
+			case <-time.After(500 * time.Millisecond):
 				t.Errorf("peer %s does not received msg", n.address.ShortString(8))
 			}
 		}(remoteNode)

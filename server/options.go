@@ -5,16 +5,21 @@ import (
 	"github.com/andantan/modular-blockchain/crypto"
 	"github.com/andantan/modular-blockchain/network/api"
 	"github.com/andantan/modular-blockchain/network/consensus"
+	"github.com/andantan/modular-blockchain/network/message"
 	"github.com/andantan/modular-blockchain/network/protocol"
 	"github.com/andantan/modular-blockchain/network/provider"
+	"github.com/andantan/modular-blockchain/network/synchronizer"
 	"time"
 )
 
 type NetworkOptions struct {
-	MaxPeers  int
-	Node      protocol.Node
-	Provider  provider.PeerProvider
-	ApiServer api.ApiServer
+	MaxPeers           int
+	Node               protocol.Node
+	Provider           provider.PeerProvider
+	ApiServer          api.ApiServer
+	GossipMessageCodec message.GossipMessageCodec
+	Synchronizer       synchronizer.Synchronizer
+	SyncMessageCodec   synchronizer.SyncMessageCodec
 }
 
 func NewNetworkOptions() *NetworkOptions {
@@ -37,8 +42,23 @@ func (o *NetworkOptions) WithApiServer(s api.ApiServer) *NetworkOptions {
 	return o
 }
 
+func (o *NetworkOptions) WithGossipMessageCodec(c message.GossipMessageCodec) *NetworkOptions {
+	o.GossipMessageCodec = c
+	return o
+}
+
+func (o *NetworkOptions) WithSynchronizer(s synchronizer.Synchronizer) *NetworkOptions {
+	o.Synchronizer = s
+	return o
+}
+
+func (o *NetworkOptions) WithSyncMessageCodec(c synchronizer.SyncMessageCodec) *NetworkOptions {
+	o.SyncMessageCodec = c
+	return o
+}
+
 func (o *NetworkOptions) IsFulFilled() bool {
-	return o.MaxPeers > 0 && o.Node != nil && o.ApiServer != nil && o.Provider == nil
+	return o.MaxPeers > 0 && o.Node != nil && o.ApiServer != nil && o.Provider == nil && o.GossipMessageCodec != nil && o.Synchronizer != nil && o.SyncMessageCodec != nil
 }
 
 type BlockchainOptions struct {

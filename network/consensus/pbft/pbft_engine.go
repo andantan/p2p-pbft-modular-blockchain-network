@@ -105,7 +105,7 @@ func NewPbftConsensusEngine(
 	return e
 }
 
-func (e *PbftConsensusEngine) StartEngine() {
+func (e *PbftConsensusEngine) Start() {
 	if !e.state.Eq(Initialized) {
 		return
 	}
@@ -142,7 +142,7 @@ func (e *PbftConsensusEngine) FinalizedBlock() <-chan *block.Block {
 	return e.finalizedBlockCh
 }
 
-func (e *PbftConsensusEngine) StopEngine() {
+func (e *PbftConsensusEngine) Stop() {
 	e.closeOnce.Do(func() {
 		_ = e.logger.Log("msg", "stoping consensus engine", "state", e.state.Get(), "view", e.view.Get(), "sequence", e.sequence)
 
@@ -189,34 +189,39 @@ func (e *PbftConsensusEngine) run() {
 			}
 			timer.Reset(e.viewChangeTimeout)
 
-			var (
-				rm  consensus.ConsensusMessage
-				err error
-			)
-			switch t := msg.(type) {
-			case *PbftPrePrepareMessage:
-				rm, err = e.handlePrePrepareMessage(t)
-			case *PbftPrepareMessage:
-				rm, err = e.handlePrepareMessage(t)
-			case *PbftCommitMessage:
-				rm, err = e.handleCommitMessage(t)
-			case *PbftViewChangeMessage:
-				rm, err = e.handleViewChangeMessage(t)
-			case *PbftNewViewMessage:
-				rm, err = e.handleNewViewMessage(t)
-			default:
-				rm, err = nil, fmt.Errorf("unknown consensus message (type: %T)", msg)
-			}
-
-			if err != nil {
-				_ = e.logger.Log("msg", err)
-				continue
-			}
-
-			if rm != nil {
-				e.sendToOutgoing(rm)
-			}
+			e.handleConsensusMessage(msg)
 		}
+	}
+}
+
+func (e *PbftConsensusEngine) handleConsensusMessage(m consensus.ConsensusMessage) {
+	var (
+		err error
+		cm  consensus.ConsensusMessage
+	)
+
+	switch t := m.(type) {
+	case *PbftPrePrepareMessage:
+		cm, err = e.handlePrePrepareMessage(t)
+	case *PbftPrepareMessage:
+		cm, err = e.handlePrepareMessage(t)
+	case *PbftCommitMessage:
+		cm, err = e.handleCommitMessage(t)
+	case *PbftViewChangeMessage:
+		cm, err = e.handleViewChangeMessage(t)
+	case *PbftNewViewMessage:
+		cm, err = e.handleNewViewMessage(t)
+	default:
+		cm, err = nil, fmt.Errorf("unknown consensus message (type: %T)", m)
+	}
+
+	if err != nil {
+		_ = e.logger.Log("msg", err)
+		return
+	}
+
+	if cm != nil {
+		e.sendToOutgoing(cm)
 	}
 }
 

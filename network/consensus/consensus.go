@@ -5,9 +5,9 @@ import (
 )
 
 type ConsensusEngine interface {
-	StartEngine()
+	Start()
 	HandleMessage(ConsensusMessage)
 	OutgoingMessage() <-chan ConsensusMessage
 	FinalizedBlock() <-chan *block.Block
-	StopEngine()
+	Stop()
 }

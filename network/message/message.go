@@ -14,7 +14,7 @@ type Message interface {
 type RawMessage interface {
 	Protocol() string
 	From() types.Address
-	Payload() []byte
+	Payload() []byte // [type, sub-type, data...]
 }
 
 type DecodedMessage struct {
@@ -26,21 +26,11 @@ type DecodedMessage struct {
 type MessageType byte
 
 const (
-	MessageP2PType MessageType = iota
+	MessageGossipType MessageType = iota
+	MessageSyncType
 	MessageConsensusType
 )
 
-type MessageP2PSubType byte
-
-const (
-	MessageP2PSubTypeTransaction MessageP2PSubType = iota
-	MessageP2PSubTypeBlock
-	MessageP2PSubTypeRequestStatus
-	MessageP2PSubTypeResponseStatus
-	MessageP2PSubTypeRequestHeaders
-	MessageP2PSubTypeResponseHeaders
-	MessageP2PSubTypeRequestBlocks
-	MessageP2PSubTypeResponseBlocks
-)
-
+type MessageGossipSubType byte
+type MessageSyncSubType byte
 type MessageConsensusSubType byte
