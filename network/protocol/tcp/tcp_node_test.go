@@ -82,10 +82,10 @@ func TestTCPNode_Stop(t *testing.T) {
 
 func TestTCPNode_TieBreaking(t *testing.T) {
 	nodeANetAddr := ":7000"
-	nodeA := GenerateTestTcpNode(t, nodeANetAddr, 1)
+	nodeA := GenerateTestTcpNode(t, nodeANetAddr, 2)
 
 	nodeBNetAddr := ":8000"
-	nodeB := GenerateTestTcpNode(t, nodeBNetAddr, 1)
+	nodeB := GenerateTestTcpNode(t, nodeBNetAddr, 2)
 
 	go nodeA.Listen()
 	go nodeB.Listen()

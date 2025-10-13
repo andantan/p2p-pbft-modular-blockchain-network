@@ -8,6 +8,7 @@ import (
 	"github.com/andantan/modular-blockchain/crypto"
 	"github.com/andantan/modular-blockchain/network/message"
 	"github.com/andantan/modular-blockchain/network/provider"
+	"github.com/andantan/modular-blockchain/network/synchronizer"
 	"github.com/andantan/modular-blockchain/types"
 	"github.com/andantan/modular-blockchain/util"
 	"github.com/go-kit/log"
@@ -271,21 +272,23 @@ func (s *Server) loop() {
 	_ = s.logger.Log("msg", "server is online")
 
 	rawMsgCh := s.Node.ConsumeRawMessage()
+	synchronizerMsgCh := s.Synchronizer.OutgoingMessage()
 	// apiTxCh := s.ApiServer.ConsumeTransaction()
 
 	for {
 		select {
 		case <-s.closeCh:
 			return
-		case msg := <-rawMsgCh:
-			s.processMessage(msg)
-
+		case m := <-rawMsgCh:
+			s.processRawMessage(m)
+		case sm := <-synchronizerMsgCh:
+			s.processSynchronizerMessage(sm)
 			// case tx := <-apiTxCh:
 		}
 	}
 }
 
-func (s *Server) processMessage(rm message.RawMessage) {
+func (s *Server) processRawMessage(rm message.RawMessage) {
 	msgType := message.MessageType(rm.Payload()[0])
 	switch msgType {
 	case message.MessageGossipType:
@@ -348,10 +351,12 @@ func (s *Server) processGossipMessage(rm message.RawMessage) {
 }
 
 func (s *Server) processSyncMessage(rm message.RawMessage) {
-	_, err := s.SyncMessageCodec.Decode(rm.Payload())
+	sm, err := s.SyncMessageCodec.Decode(rm.Payload())
 	if err != nil {
 		return
 	}
+
+	s.Synchronizer.HandleMessage(rm.From(), sm)
 }
 
 func (s *Server) processConsensusMessage(rm message.RawMessage) {
@@ -359,6 +364,25 @@ func (s *Server) processConsensusMessage(rm message.RawMessage) {
 	if err != nil {
 		return
 	}
+}
+
+func (s *Server) processSynchronizerMessage(sm synchronizer.SynchronizerMessage) {
+	payload, err := s.SyncMessageCodec.Encode(sm.SyncMessage())
+	if err != nil {
+		return
+	}
+
+	if !sm.Address().IsZero() {
+		go func() {
+			_ = s.Node.Send(sm.Address(), payload)
+		}()
+
+		return
+	}
+
+	go func() {
+		_ = s.Node.Broadcast(payload)
+	}()
 }
 
 func (s *Server) processTransaction(from types.Address, tx *block.Transaction) (bool, error) {
