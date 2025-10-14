@@ -24,6 +24,16 @@ func TestPbftConsensusEngine_HandlePrePrepare(t *testing.T) {
 
 	select {
 	case outgoingMsg := <-msgCh:
+		_, ok := outgoingMsg.(*PbftPrePrepareMessage)
+		assert.True(t, ok)
+		assert.True(t, engine.state.Eq(PrePrepared))
+
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("engine does not send PrePrepareMessage to channel")
+	}
+
+	select {
+	case outgoingMsg := <-msgCh:
 		_, ok := outgoingMsg.(*PbftPrepareMessage)
 		assert.True(t, ok)
 		assert.True(t, engine.state.Eq(PrePrepared))
@@ -60,6 +70,16 @@ func TestPbftConsensusEngine_HandlePrepare(t *testing.T) {
 
 	select {
 	case outgoingMsg := <-msgCh:
+		_, ok := outgoingMsg.(*PbftPrePrepareMessage)
+		assert.True(t, ok)
+		assert.True(t, engine.state.Eq(PrePrepared))
+
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("engine does not send PrePrepareMessage to channel")
+	}
+
+	select {
+	case outgoingMsg := <-msgCh:
 		_, ok := outgoingMsg.(*PbftPrepareMessage)
 		assert.True(t, ok)
 		assert.True(t, engine.state.Eq(PrePrepared))
@@ -78,6 +98,18 @@ func TestPbftConsensusEngine_HandlePrepare(t *testing.T) {
 		assert.NoError(t, pm.Sign(validatorKeys[i]))
 
 		handler(pm)
+	}
+
+	for i := 0; i < engine.quorum; i++ {
+		select {
+		case outgoingMsg := <-msgCh:
+			_, ok := outgoingMsg.(*PbftPrepareMessage)
+			assert.True(t, ok)
+			assert.True(t, engine.state.Eq(PrePrepared))
+
+		case <-time.After(100 * time.Millisecond):
+			t.Fatal("engine does not send PrePrepareMessage to channel")
+		}
 	}
 
 	select {
@@ -122,9 +154,17 @@ func TestPbftConsensusEngine_HandleCommit(t *testing.T) {
 
 	select {
 	case outgoingMsg := <-msgCh:
+		_, ok := outgoingMsg.(*PbftPrePrepareMessage)
+		assert.True(t, ok)
+
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("engine does not send PrePrepareMessage to channel")
+	}
+
+	select {
+	case outgoingMsg := <-msgCh:
 		_, ok := outgoingMsg.(*PbftPrepareMessage)
 		assert.True(t, ok)
-		assert.True(t, engine.state.Eq(PrePrepared))
 
 	case <-time.After(100 * time.Millisecond):
 		t.Fatal("engine does not send PrePrepareMessage to channel!")
@@ -136,18 +176,27 @@ func TestPbftConsensusEngine_HandleCommit(t *testing.T) {
 	assert.NoError(t, err)
 
 	for i := 0; i < engine.quorum; i++ {
-		key := validatorKeys[i]
 		pm := NewPbftPrepareMessage(0, height, bh)
-		assert.NoError(t, pm.Sign(key))
+		assert.NoError(t, pm.Sign(validatorKeys[i]))
 
 		handler(pm)
+	}
+
+	for i := 0; i < engine.quorum; i++ {
+		select {
+		case outgoingMsg := <-msgCh:
+			_, ok := outgoingMsg.(*PbftPrepareMessage)
+			assert.True(t, ok)
+
+		case <-time.After(100 * time.Millisecond):
+			t.Fatal("engine does not send PrePrepareMessage to channel")
+		}
 	}
 
 	select {
 	case outgoingMsg := <-msgCh:
 		_, ok := outgoingMsg.(*PbftCommitMessage)
 		assert.True(t, ok)
-		assert.True(t, engine.state.Eq(Prepared))
 
 	case <-time.After(100 * time.Millisecond):
 		t.Fatal("engine does not send PrePrepareMessage to channel")
@@ -160,9 +209,30 @@ func TestPbftConsensusEngine_HandleCommit(t *testing.T) {
 		handler(pm)
 	}
 
+	for i := 0; i < engine.quorum-1; i++ {
+		select {
+		case outgoingMsg := <-msgCh:
+			_, ok := outgoingMsg.(*PbftCommitMessage)
+			assert.True(t, ok)
+
+		case <-time.After(100 * time.Millisecond):
+			t.Fatal("engine does not send PrePrepareMessage to channel")
+		}
+	}
+
+	select {
+	case outgoingMsg := <-msgCh:
+		_, ok := outgoingMsg.(*PbftCommitMessage)
+		assert.True(t, ok)
+
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("engine does not send PrePrepareMessage to channel")
+	}
+
 	select {
 	case fb := <-fbCh:
 		finalizedBlockHash, err := fb.Hash()
+		assert.True(t, engine.state.Eq(Finalized))
 		assert.NoError(t, err)
 		assert.True(t, bh.Equal(finalizedBlockHash))
 		assert.NotNil(t, fb.Tail)
@@ -260,5 +330,11 @@ func TestPbftConsensusEngine_ViewChange(t *testing.T) {
 
 	wg.Wait()
 
+	<-time.After(500 * time.Millisecond)
+
 	assert.Equal(t, finalizedCount, vc)
+
+	for _, e := range engines {
+		assert.True(t, e.state.Eq(Finalized))
+	}
 }

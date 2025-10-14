@@ -51,7 +51,7 @@ func TestDnsPeerProvider_Deregister(t *testing.T) {
 	defer server.Close()
 
 	p := NewDnsPeerProvider(server.Listener.Addr().String())
-	assert.NoError(t, p.Deregister(i))
+	p.Deregister(i)
 }
 
 func TestDnsPeerProvider_Heartbeat(t *testing.T) {

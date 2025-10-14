@@ -31,6 +31,10 @@ func NewBlockProcessor(chain *Blockchain) *BlockProcessor {
 }
 
 func (p *BlockProcessor) ProcessBlock(b *block.Block) error {
+	if !b.IsConsented() {
+
+	}
+
 	height := b.Header.Height
 
 	if height == 0 {

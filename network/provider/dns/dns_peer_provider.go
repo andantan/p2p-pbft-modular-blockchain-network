@@ -33,8 +33,8 @@ func (p *DnsPeerProvider) Register(our *provider.PeerInfo) error {
 	return p.postJSON("/register", our)
 }
 
-func (p *DnsPeerProvider) Deregister(our *provider.PeerInfo) error {
-	return p.postJSON("/deregister", our)
+func (p *DnsPeerProvider) Deregister(our *provider.PeerInfo) {
+	_ = p.postJSON("/deregister", our)
 }
 
 func (p *DnsPeerProvider) Heartbeat(our *provider.PeerInfo) error {

@@ -138,6 +138,7 @@ func (n *TcpNode) Close() {
 
 		close(n.closeCh)
 		_ = n.listener.Close()
+		close(n.outgoingMsgCh)
 	})
 }
 
@@ -272,9 +273,9 @@ func (n *TcpNode) forwardMessages(p *TcpPeer) {
 			}
 
 			select {
-			case n.outgoingMsgCh <- msg:
 			case <-n.closeCh:
 				return
+			case n.outgoingMsgCh <- msg:
 			}
 		}
 	}

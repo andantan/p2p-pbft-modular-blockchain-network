@@ -97,8 +97,8 @@ func NewPbftConsensusEngine(
 		viewChangeVotes:   types.NewAtomicMap[types.Address, *PbftViewChangeMessage](),
 		viewChangeTimeout: 5 * time.Second,
 		finalizedBlockCh:  make(chan *block.Block, 1),
-		outgoingMsgCh:     make(chan consensus.ConsensusMessage, 100),
-		internalMsgCh:     make(chan consensus.ConsensusMessage, 100),
+		outgoingMsgCh:     make(chan consensus.ConsensusMessage, 200),
+		internalMsgCh:     make(chan consensus.ConsensusMessage, 200),
 		closeCh:           make(chan struct{}),
 	}
 
@@ -111,7 +111,7 @@ func (e *PbftConsensusEngine) Start() {
 	}
 
 	e.state.Set(Idle)
-	_ = e.logger.Log("msg", "changed state", "state", e.state.Get(), "view", e.view.Get(), "sequence", "not-initialized")
+	_ = e.logger.Log("msg", "changed state", "state", e.state.Get(), "view", e.view.Get(), "sequence", e.sequence)
 
 	go e.run()
 }
@@ -144,6 +144,8 @@ func (e *PbftConsensusEngine) FinalizedBlock() <-chan *block.Block {
 
 func (e *PbftConsensusEngine) Stop() {
 	e.closeOnce.Do(func() {
+		e.state.Set(Terminated)
+		_ = e.logger.Log("msg", "changed state", "state", e.state.Get(), "view", e.view.Get(), "sequence", e.sequence)
 		_ = e.logger.Log("msg", "stoping consensus engine", "state", e.state.Get(), "view", e.view.Get(), "sequence", e.sequence)
 
 		close(e.closeCh)
@@ -151,8 +153,6 @@ func (e *PbftConsensusEngine) Stop() {
 		close(e.outgoingMsgCh)
 		close(e.finalizedBlockCh)
 
-		e.state.Set(Terminated)
-		_ = e.logger.Log("msg", "changed state", "state", e.state.Get(), "view", e.view.Get(), "sequence", e.sequence)
 		_ = e.logger.Log("msg", "stopped consensus engine", "state", e.state.Get(), "view", e.view.Get(), "sequence", e.sequence)
 	})
 }
@@ -161,7 +161,7 @@ func (e *PbftConsensusEngine) run() {
 	timer := time.NewTimer(e.viewChangeTimeout)
 	defer timer.Stop()
 
-	_ = e.logger.Log("msg", "start consensus engine", "state", e.state.Get(), "view", e.view.Get(), "sequence", "not-initialized")
+	_ = e.logger.Log("msg", "start consensus engine", "state", e.state.Get(), "view", e.view.Get(), "sequence", e.sequence)
 
 	for {
 		select {
@@ -242,6 +242,8 @@ func (e *PbftConsensusEngine) handlePrePrepareMessage(m *PbftPrePrepareMessage) 
 		return nil, err
 	}
 
+	e.sendToOutgoing(m) // gossip
+
 	e.state.Set(PrePrepared)
 	_ = e.logger.Log("msg", "changed state", "state", e.state.Get(), "view", e.view.Get(), "sequence", e.sequence)
 
@@ -286,7 +288,9 @@ func (e *PbftConsensusEngine) handlePrepareMessage(m *PbftPrepareMessage) (conse
 	countLogMsg := fmt.Sprintf("(%d/%d)", voteCount, e.quorum)
 	_ = e.logger.Log("msg", "received prepare vote", "address", from.ShortString(8), "vote_count", countLogMsg, "view", e.view.Get(), "sequence", e.sequence)
 
-	if voteCount >= e.quorum {
+	e.sendToOutgoing(m) // gossip
+
+	if voteCount >= e.quorum && e.state.Eq(PrePrepared) {
 		msg := NewPbftCommitMessage(m.View, m.Sequence, bh)
 		if err = e.validator.Sign(msg); err != nil {
 			return nil, err
@@ -329,13 +333,18 @@ func (e *PbftConsensusEngine) handleCommitMessage(m *PbftCommitMessage) (consens
 	countLogMsg := fmt.Sprintf("(%d/%d)", voteCount, e.quorum)
 	_ = e.logger.Log("msg", "received commit vote", "address", from.ShortString(8), "vote_count", countLogMsg, "view", e.view.Get(), "sequence", e.sequence)
 
+	e.sendToOutgoing(m) // gossip
+
 	if voteCount >= e.quorum && e.state.Eq(Prepared) {
 		_ = e.logger.Log("msg", "block committed", "address", e.validator.PublicKey().Address().ShortString(8))
 		e.state.Set(Committed)
 		_ = e.logger.Log("msg", "changed state", "state", e.state.Get(), "view", e.view.Get(), "sequence", e.sequence)
 
 		e.finalizeEngine()
+
+		return nil, nil
 	}
+
 	return nil, nil
 }
 
@@ -366,6 +375,8 @@ func (e *PbftConsensusEngine) handleViewChangeMessage(m *PbftViewChangeMessage) 
 	countLogMsg := fmt.Sprintf("(%d/%d)", voteCount, e.quorum)
 	_ = e.logger.Log("msg", "received view-change vote", "address", from.ShortString(8), "vote_count", countLogMsg, "new_view", m.NewView, "sequence", e.sequence)
 
+	e.sendToOutgoing(m) // gossip
+
 	newLeader := e.validator.GetLeader(e.sequence, m.NewView)
 	ourAddr := e.validator.PublicKey().Address()
 
@@ -375,7 +386,7 @@ func (e *PbftConsensusEngine) handleViewChangeMessage(m *PbftViewChangeMessage) 
 			return nil, err
 		}
 
-		_ = e.logger.Log("msg", "elected new leader", "new_view", m.NewView, "sequence", e.sequence)
+		_ = e.logger.Log("msg", "elected new leader. broadcast pre-prepare message", "new_view", m.NewView, "sequence", e.sequence)
 
 		return msg, nil
 	}
@@ -405,6 +416,8 @@ func (e *PbftConsensusEngine) handleNewViewMessage(m *PbftNewViewMessage) (conse
 			return nil, fmt.Errorf("invalid view change message in new view proof: %w", err)
 		}
 	}
+
+	e.sendToOutgoing(m) // gossip
 
 	e.view.Set(m.NewView)
 	_ = e.logger.Log("msg", "accepted new view", "new_view", m.NewView, "sequence", e.sequence)
@@ -437,16 +450,16 @@ func (e *PbftConsensusEngine) finalizeEngine() {
 			_ = e.logger.Log("msg", "failed block sealing", "view", e.view.Get(), "sequence", e.sequence, "err", err)
 			// e.startViewChange()
 			return
-		} else {
-			_ = e.logger.Log("msg", "successed block sealing", "view", e.view.Get(), "sequence", e.sequence)
 		}
 
+		_ = e.logger.Log("msg", "successed block sealing", "view", e.view.Get(), "sequence", e.sequence)
+
 		select {
+		case <-e.closeCh:
+			return
 		case e.finalizedBlockCh <- e.block:
 			e.state.Set(Finalized)
 			_ = e.logger.Log("msg", "changed state", "state", e.state.Get(), "view", e.view.Get(), "sequence", e.sequence)
-		case <-e.closeCh:
-			return
 		}
 
 		_ = e.logger.Log("msg", "finalized consensus", "state", e.state.Get(), "view", e.view.Get(), "sequence", e.sequence)
@@ -472,12 +485,6 @@ func (e *PbftConsensusEngine) sendToOutgoing(m consensus.ConsensusMessage) {
 	select {
 	case <-e.closeCh:
 		return
-	default:
-	}
-
-	select {
 	case e.outgoingMsgCh <- m:
-	case <-e.closeCh:
-		return
 	}
 }

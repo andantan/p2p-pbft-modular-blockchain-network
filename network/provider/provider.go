@@ -10,9 +10,9 @@ type PeerInfo struct {
 }
 
 type PeerProvider interface {
+	Register(*PeerInfo) error
 	DiscoverPeers() ([]*PeerInfo, error)
 	GetValidators() ([]*PeerInfo, error)
-	Register(*PeerInfo) error
-	Deregister(*PeerInfo) error
 	Heartbeat(*PeerInfo) error
+	Deregister(*PeerInfo)
 }

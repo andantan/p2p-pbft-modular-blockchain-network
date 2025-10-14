@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/andantan/modular-blockchain/core"
+	"github.com/andantan/modular-blockchain/core/block"
 	"github.com/andantan/modular-blockchain/crypto"
 	"github.com/andantan/modular-blockchain/network/api"
 	"github.com/andantan/modular-blockchain/network/consensus"
@@ -9,13 +10,14 @@ import (
 	"github.com/andantan/modular-blockchain/network/protocol"
 	"github.com/andantan/modular-blockchain/network/provider"
 	"github.com/andantan/modular-blockchain/network/synchronizer"
+	"github.com/andantan/modular-blockchain/types"
 	"time"
 )
 
 type NetworkOptions struct {
 	MaxPeers           int
 	Node               protocol.Node
-	Provider           provider.PeerProvider
+	PeerProvider       provider.PeerProvider
 	ApiServer          api.ApiServer
 	GossipMessageCodec message.GossipMessageCodec
 	Synchronizer       synchronizer.Synchronizer
@@ -32,8 +34,8 @@ func (o *NetworkOptions) WithNode(maxPeers int, node protocol.Node) *NetworkOpti
 	return o
 }
 
-func (o *NetworkOptions) WithProvider(p provider.PeerProvider) *NetworkOptions {
-	o.Provider = p
+func (o *NetworkOptions) WithPeerProvider(p provider.PeerProvider) *NetworkOptions {
+	o.PeerProvider = p
 	return o
 }
 
@@ -70,7 +72,7 @@ func (o *NetworkOptions) IsFulFilled() bool {
 		return false
 	}
 
-	if o.Provider == nil {
+	if o.PeerProvider == nil {
 		return false
 	}
 
@@ -153,13 +155,20 @@ func (o *BlockchainOptions) IsFulFilled() bool {
 }
 
 type ConsensusOptions struct {
-	Proposer              consensus.Proposer
-	ConsensusEngines      map[uint64]consensus.ConsensusEngine
-	ConsensusMessageCodec consensus.ConsensusMessageCodec
+	Proposer                        consensus.Proposer
+	ConsensusEngines                map[uint64]consensus.ConsensusEngine
+	ConsensusEngineFactory          consensus.ConsensusEngineFactory
+	ConsensusMessageCodec           consensus.ConsensusMessageCodec
+	ForwardConsensusEngineMessageCh chan consensus.ConsensusMessage
+	ForwardFinalizedBlockCh         chan *block.Block
 }
 
 func NewConsensusOptions() *ConsensusOptions {
-	return &ConsensusOptions{}
+	return &ConsensusOptions{
+		ConsensusEngines:                make(map[uint64]consensus.ConsensusEngine),
+		ForwardConsensusEngineMessageCh: make(chan consensus.ConsensusMessage, 200),
+		ForwardFinalizedBlockCh:         make(chan *block.Block, 1),
+	}
 }
 
 func (o *ConsensusOptions) WithProposer(p consensus.Proposer) *ConsensusOptions {
@@ -167,8 +176,8 @@ func (o *ConsensusOptions) WithProposer(p consensus.Proposer) *ConsensusOptions 
 	return o
 }
 
-func (o *ConsensusOptions) WithConsensusEngine(engines map[uint64]consensus.ConsensusEngine) *ConsensusOptions {
-	o.ConsensusEngines = engines
+func (o *ConsensusOptions) WithConsensusEngineFactory(f consensus.ConsensusEngineFactory) *ConsensusOptions {
+	o.ConsensusEngineFactory = f
 	return o
 }
 
@@ -186,7 +195,19 @@ func (o *ConsensusOptions) IsFulFilled() bool {
 		return false
 	}
 
+	if o.ConsensusEngineFactory == nil {
+		return false
+	}
+
 	if o.ConsensusMessageCodec == nil {
+		return false
+	}
+
+	if o.ForwardConsensusEngineMessageCh == nil {
+		return false
+	}
+
+	if o.ForwardFinalizedBlockCh == nil {
 		return false
 	}
 
@@ -195,6 +216,8 @@ func (o *ConsensusOptions) IsFulFilled() bool {
 
 type ServerOptions struct {
 	PrivateKey    *crypto.PrivateKey
+	PublicKey     *crypto.PublicKey
+	Address       types.Address
 	ListenAddr    string
 	ApiListenAddr string
 	IsValidator   bool
@@ -208,6 +231,8 @@ func NewServerOptions(isValidator bool) *ServerOptions {
 
 func (o *ServerOptions) WithPrivateKey(k *crypto.PrivateKey) *ServerOptions {
 	o.PrivateKey = k
+	o.PublicKey = k.PublicKey()
+	o.Address = k.PublicKey().Address()
 	return o
 }
 
@@ -223,6 +248,14 @@ func (o *ServerOptions) WithApiListenAddr(apiListenAddr string) *ServerOptions {
 
 func (o *ServerOptions) IsFulFilled() bool {
 	if o.PrivateKey == nil {
+		return false
+	}
+
+	if o.PublicKey == nil {
+		return false
+	}
+
+	if o.Address.Equal(types.Address{}) {
 		return false
 	}
 
