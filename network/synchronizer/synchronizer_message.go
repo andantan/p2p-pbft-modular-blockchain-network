@@ -9,6 +9,36 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+type SynchronizerMessage interface {
+	Address() types.Address
+	SyncMessage() SyncMessage
+}
+
+type DirectedMessage struct {
+	To      types.Address
+	Message SyncMessage
+}
+
+func (m *DirectedMessage) Address() types.Address {
+	return m.To
+}
+
+func (m *DirectedMessage) SyncMessage() SyncMessage {
+	return m.Message
+}
+
+type BroadcastMessage struct {
+	Message SyncMessage
+}
+
+func (m *BroadcastMessage) Address() types.Address {
+	return types.Address{}
+}
+
+func (m *BroadcastMessage) SyncMessage() SyncMessage {
+	return m.Message
+}
+
 type SyncMessage interface {
 	codec.ProtoCodec
 }
@@ -228,15 +258,4 @@ func (m *ResponseBlocksMessage) FromProto(msg proto.Message) error {
 
 func (m *ResponseBlocksMessage) EmptyProto() proto.Message {
 	return &pbSync.ResponseBlocksMessage{}
-}
-
-type SynchronizerMessage interface{}
-
-type DirectedMessage struct {
-	To      types.Address
-	Message SyncMessage
-}
-
-type BroadcastMessage struct {
-	Message SyncMessage
 }

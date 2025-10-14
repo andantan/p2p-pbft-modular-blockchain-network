@@ -28,6 +28,18 @@ func GenerateTestPbftPrePrepareMessage(t *testing.T, view uint64) (*PbftPrePrepa
 	return msg, privKey
 }
 
+func GenerateTestPbftPrePrepareMessageWithBlockAndKey(t *testing.T, b *block.Block, k *crypto.PrivateKey, view uint64) *PbftPrePrepareMessage {
+	t.Helper()
+
+	msg := NewPbftPrePrepareMessage(view, b.Header.Height, b, k.PublicKey())
+	assert.NoError(t, msg.Sign(k))
+	assert.NotNil(t, msg.PublicKey)
+	assert.NotNil(t, msg.Signature)
+	assert.NoError(t, msg.Verify())
+
+	return msg
+}
+
 func GenerateTestPbftPrepareMessage(t *testing.T, view uint64) (*PbftPrepareMessage, *crypto.PrivateKey) {
 	t.Helper()
 
@@ -43,6 +55,20 @@ func GenerateTestPbftPrepareMessage(t *testing.T, view uint64) (*PbftPrepareMess
 	assert.NoError(t, msg.Verify())
 
 	return msg, privKey
+}
+
+func GenerateTestPbftPrepareMessageWithBlockAndKey(t *testing.T, b *block.Block, k *crypto.PrivateKey, view uint64) *PbftPrepareMessage {
+	t.Helper()
+
+	hash, err := b.Hash()
+	assert.NoError(t, err)
+	msg := NewPbftPrepareMessage(view, b.Header.Height, hash)
+	assert.NoError(t, msg.Sign(k))
+	assert.NotNil(t, msg.PublicKey)
+	assert.NotNil(t, msg.Signature)
+	assert.NoError(t, msg.Verify())
+
+	return msg
 }
 
 func GenerateTestPbftCommitMessage(t *testing.T, view uint64) (*PbftCommitMessage, *crypto.PrivateKey) {

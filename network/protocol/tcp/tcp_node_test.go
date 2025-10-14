@@ -13,10 +13,10 @@ import (
 
 func TestTCPNode_ConnectAndAccept(t *testing.T) {
 	nodeANetAddr := ":4000"
-	nodeA := GenerateTestTcpNode(t, nodeANetAddr)
+	nodeA := GenerateTestTcpNode(t, nodeANetAddr, 1)
 
 	nodeBNetAddr := ":5000"
-	nodeB := GenerateTestTcpNode(t, nodeBNetAddr)
+	nodeB := GenerateTestTcpNode(t, nodeBNetAddr, 1)
 
 	nodeA.Listen()
 	go nodeA.acceptLoop()
@@ -61,7 +61,7 @@ func TestTCPNode_ConnectAndAccept(t *testing.T) {
 
 func TestTCPNode_Stop(t *testing.T) {
 	nodeNetAddr := ":7000"
-	node := GenerateTestTcpNode(t, nodeNetAddr)
+	node := GenerateTestTcpNode(t, nodeNetAddr, 1)
 
 	go node.Listen()
 	// delay for node starting
@@ -82,10 +82,10 @@ func TestTCPNode_Stop(t *testing.T) {
 
 func TestTCPNode_TieBreaking(t *testing.T) {
 	nodeANetAddr := ":7000"
-	nodeA := GenerateTestTcpNode(t, nodeANetAddr)
+	nodeA := GenerateTestTcpNode(t, nodeANetAddr, 2)
 
 	nodeBNetAddr := ":8000"
-	nodeB := GenerateTestTcpNode(t, nodeBNetAddr)
+	nodeB := GenerateTestTcpNode(t, nodeBNetAddr, 2)
 
 	go nodeA.Listen()
 	go nodeB.Listen()
@@ -118,9 +118,66 @@ func TestTCPNode_TieBreaking(t *testing.T) {
 	assert.Equal(t, len(nodeB.Peers()), 1)
 }
 
+func TestTCPNode_MaxReached(t *testing.T) {
+	maxPeers := 3
+	mainNodeAddr := ":20000"
+	mainNode := GenerateTestTcpNode(t, mainNodeAddr, maxPeers)
+
+	mainNode.Listen()
+	time.Sleep(100 * time.Millisecond)
+
+	numPeers := 3
+	remoteNodes := make([]*TcpNode, numPeers)
+	for i := 0; i < numPeers; i++ {
+		time.Sleep(50 * time.Millisecond)
+		go func() {
+			remoteNode := GenerateTestTcpNode(t, fmt.Sprintf(":%d", 20001+i), maxPeers)
+			remoteNode.Listen()
+
+			time.Sleep(100 * time.Millisecond)
+			remoteNodes[i] = remoteNode
+			assert.NoError(t, remoteNode.Connect(mainNodeAddr))
+		}()
+	}
+
+	time.Sleep(200 * time.Millisecond)
+
+	assert.Equal(t, maxPeers, len(mainNode.Peers()))
+	for i := 0; i < numPeers; i++ {
+		assert.Equal(t, 1, len(remoteNodes[i].Peers()))
+	}
+
+	t.Cleanup(func() {
+		mainNode.Close()
+		for _, n := range remoteNodes {
+			n.Close()
+		}
+	})
+
+	lateNode := GenerateTestTcpNode(t, ":22222", maxPeers)
+
+	t.Cleanup(func() {
+		lateNode.Close()
+	})
+
+	lateNode.Listen()
+	time.Sleep(100 * time.Millisecond)
+
+	assert.NoError(t, lateNode.Connect(mainNodeAddr))
+	time.Sleep(100 * time.Millisecond)
+	assert.Equal(t, 0, len(lateNode.Peers()))
+
+	for i := 0; i < numPeers; i++ {
+		assert.NoError(t, lateNode.Connect(remoteNodes[i].listenAddr))
+	}
+	time.Sleep(100 * time.Millisecond)
+	assert.Equal(t, 3, len(lateNode.Peers()))
+}
+
 func TestTCPNode_Broadcast(t *testing.T) {
 	mainNodeAddr := ":10000"
-	node := GenerateTestTcpNode(t, mainNodeAddr)
+	maxPeers := 7
+	node := GenerateTestTcpNode(t, mainNodeAddr, maxPeers)
 
 	node.Listen()
 	time.Sleep(100 * time.Millisecond)
@@ -128,8 +185,9 @@ func TestTCPNode_Broadcast(t *testing.T) {
 	numPeers := 7
 	remoteNodes := make([]*TcpNode, numPeers)
 	for i := 0; i < numPeers; i++ {
+		time.Sleep(50 * time.Millisecond)
 		go func() {
-			remoteNode := GenerateTestTcpNode(t, fmt.Sprintf(":%d", 10001+i))
+			remoteNode := GenerateTestTcpNode(t, fmt.Sprintf(":%d", 10001+i), maxPeers)
 			remoteNode.Listen()
 
 			time.Sleep(100 * time.Millisecond)
@@ -146,7 +204,7 @@ func TestTCPNode_Broadcast(t *testing.T) {
 	})
 
 	time.Sleep(200 * time.Millisecond)
-	assert.Equal(t, numPeers, len(node.Peers()))
+	assert.Equal(t, maxPeers, len(node.Peers()))
 
 	tx := block.GenerateRandomTestTransaction(t)
 	payload, err := codec.EncodeProto(tx)

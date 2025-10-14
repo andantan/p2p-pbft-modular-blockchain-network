@@ -17,12 +17,6 @@ type RawMessage interface {
 	Payload() []byte // [type, sub-type, data...]
 }
 
-type DecodedMessage struct {
-	Protocol string
-	From     types.Address
-	Data     any
-}
-
 type MessageType byte
 
 const (

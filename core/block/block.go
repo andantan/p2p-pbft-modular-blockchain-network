@@ -263,6 +263,10 @@ func (b *Block) Seal(votes []*CommitVote, set []types.Address) error {
 	return nil
 }
 
+func (b *Block) IsConsented() bool {
+	return b.Tail != nil
+}
+
 func BlocksToProto(bs []*Block) ([]*pb.Block, error) {
 	protoBs := make([]*pb.Block, len(bs))
 	for i, b := range bs {

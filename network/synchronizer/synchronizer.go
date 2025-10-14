@@ -245,98 +245,6 @@ func (s *ChainSynchroizer) handleSyncMessage(m *InternalSyncMessage) {
 	}
 }
 
-func (s *ChainSynchroizer) synchronize() {
-	currentState := s.state.Get()
-	if currentState != Idle && currentState != Synchronized {
-		return
-	}
-
-	s.removeBehindPeers()
-
-	bestPeer := s.findBestPeer()
-	if bestPeer == nil {
-		_ = s.logger.Log("msg", "no available peers to sync with, broadcasting for status")
-		m := &BroadcastMessage{
-			Message: &RequestStatusMessage{},
-		}
-		s.sendToOutgoing(m)
-		return
-	}
-
-	ourHeight := s.chain.GetCurrentHeight()
-	if ourHeight < bestPeer.Height {
-		_ = s.logger.Log("msg", "chain is behind, requesting blocks", "our_height", ourHeight, "network_height", bestPeer.Height)
-		req := &RequestBlocksMessage{
-			From:  ourHeight + 1,
-			Count: 16,
-		}
-		m := &DirectedMessage{
-			To:      bestPeer.Address,
-			Message: req,
-		}
-		s.sendToOutgoing(m)
-		s.state.Set(SyncingBlocks)
-		_ = s.logger.Log("msg", "changed state", "state", s.state.Get())
-		return
-	} else {
-		s.state.Set(Synchronized)
-		_ = s.logger.Log("msg", "changed state", "state", s.state.Get())
-	}
-}
-
-func (s *ChainSynchroizer) findBestPeer() *PeerState {
-	highestHeight := s.chain.GetCurrentHeight()
-
-	bestPeers := make([]*PeerState, 0)
-	s.availablePeers.Range(func(addr types.Address, state *PeerState) bool {
-		if state.Height > highestHeight {
-			highestHeight = state.Height
-			bestPeers = []*PeerState{state}
-		} else if state.Height == highestHeight && highestHeight >= s.chain.GetCurrentHeight() {
-			bestPeers = append(bestPeers, state)
-		}
-		return true
-	})
-
-	if len(bestPeers) == 0 {
-		return nil
-	}
-
-	randomIndex := rand.Intn(len(bestPeers))
-	return bestPeers[randomIndex]
-}
-
-func (s *ChainSynchroizer) removeBehindPeers() {
-	currentHeight := s.chain.GetCurrentHeight()
-	thresholdHeight := uint64(float64(currentHeight) * 0.8) // 20%
-
-	behindPeers := make([]*PeerState, 0)
-	s.availablePeers.Range(func(addr types.Address, state *PeerState) bool {
-		if state.Height < thresholdHeight {
-			behindPeers = append(behindPeers, state)
-		}
-		return true
-	})
-
-	for _, peer := range behindPeers {
-		s.availablePeers.Remove(peer.Address)
-	}
-}
-
-func (s *ChainSynchroizer) sendToOutgoing(m SynchronizerMessage) {
-	select {
-	case <-s.closeCh:
-		return
-	default:
-	}
-
-	select {
-	case s.outgoingMsgCh <- m:
-	case <-s.closeCh:
-		return
-	}
-}
-
 func (s *ChainSynchroizer) handleRequestStatusMessage(from types.Address, _ *RequestStatusMessage) (SynchronizerMessage, error) {
 	_ = s.logger.Log("msg", "received request status message", "peer_address", from.ShortString(8))
 
@@ -525,4 +433,96 @@ func (s *ChainSynchroizer) handleResponseBlocksMessage(from types.Address, m *Re
 	_ = s.logger.Log("msg", "changed state", "state", s.state.Get())
 
 	return nil, nil
+}
+
+func (s *ChainSynchroizer) synchronize() {
+	currentState := s.state.Get()
+	if currentState != Idle && currentState != Synchronized {
+		return
+	}
+
+	s.removeBehindPeers()
+
+	bestPeer := s.findBestPeer()
+	if bestPeer == nil {
+		_ = s.logger.Log("msg", "no available peers to sync with, broadcasting for status")
+		m := &BroadcastMessage{
+			Message: &RequestStatusMessage{},
+		}
+		s.sendToOutgoing(m)
+		return
+	}
+
+	ourHeight := s.chain.GetCurrentHeight()
+	if ourHeight < bestPeer.Height {
+		_ = s.logger.Log("msg", "chain is behind, requesting blocks", "our_height", ourHeight, "network_height", bestPeer.Height)
+		req := &RequestBlocksMessage{
+			From:  ourHeight + 1,
+			Count: 16,
+		}
+		m := &DirectedMessage{
+			To:      bestPeer.Address,
+			Message: req,
+		}
+		s.sendToOutgoing(m)
+		s.state.Set(SyncingBlocks)
+		_ = s.logger.Log("msg", "changed state", "state", s.state.Get())
+		return
+	} else {
+		s.state.Set(Synchronized)
+		_ = s.logger.Log("msg", "changed state", "state", s.state.Get())
+	}
+}
+
+func (s *ChainSynchroizer) findBestPeer() *PeerState {
+	highestHeight := s.chain.GetCurrentHeight()
+
+	bestPeers := make([]*PeerState, 0)
+	s.availablePeers.Range(func(addr types.Address, state *PeerState) bool {
+		if state.Height > highestHeight {
+			highestHeight = state.Height
+			bestPeers = []*PeerState{state}
+		} else if state.Height == highestHeight && highestHeight >= s.chain.GetCurrentHeight() {
+			bestPeers = append(bestPeers, state)
+		}
+		return true
+	})
+
+	if len(bestPeers) == 0 {
+		return nil
+	}
+
+	randomIndex := rand.Intn(len(bestPeers))
+	return bestPeers[randomIndex]
+}
+
+func (s *ChainSynchroizer) removeBehindPeers() {
+	currentHeight := s.chain.GetCurrentHeight()
+	thresholdHeight := uint64(float64(currentHeight) * 0.8) // 20%
+
+	behindPeers := make([]*PeerState, 0)
+	s.availablePeers.Range(func(addr types.Address, state *PeerState) bool {
+		if state.Height < thresholdHeight {
+			behindPeers = append(behindPeers, state)
+		}
+		return true
+	})
+
+	for _, peer := range behindPeers {
+		s.availablePeers.Remove(peer.Address)
+	}
+}
+
+func (s *ChainSynchroizer) sendToOutgoing(m SynchronizerMessage) {
+	select {
+	case <-s.closeCh:
+		return
+	default:
+	}
+
+	select {
+	case s.outgoingMsgCh <- m:
+	case <-s.closeCh:
+		return
+	}
 }

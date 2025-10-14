@@ -1,10 +1,14 @@
 package server
 
 import (
+	"errors"
 	"fmt"
-	"github.com/andantan/modular-blockchain/crypto"
+	"github.com/andantan/modular-blockchain/core"
+	"github.com/andantan/modular-blockchain/core/block"
+	"github.com/andantan/modular-blockchain/network/consensus"
 	"github.com/andantan/modular-blockchain/network/message"
 	"github.com/andantan/modular-blockchain/network/provider"
+	"github.com/andantan/modular-blockchain/network/synchronizer"
 	"github.com/andantan/modular-blockchain/types"
 	"github.com/andantan/modular-blockchain/util"
 	"github.com/go-kit/log"
@@ -20,10 +24,7 @@ type ServerState byte
 const (
 	Initialized ServerState = iota
 	Bootstrap
-	Syncing
 	Online
-	Forked
-	InConsensus
 	Offline
 )
 
@@ -33,14 +34,8 @@ func (s ServerState) String() string {
 		return "Initialized"
 	case Bootstrap:
 		return "BOOTSTRAP"
-	case Syncing:
-		return "SYNCING"
 	case Online:
 		return "ONLINE"
-	case Forked:
-		return "FORKED"
-	case InConsensus:
-		return "IN_CONSENSUS"
 	case Offline:
 		return "OFFLINE"
 	default:
@@ -49,24 +44,20 @@ func (s ServerState) String() string {
 }
 
 type Server struct {
-	ServerOptions
-	NetworkOptions
-	BlockchainOptions
-	ConsensusOptions
+	*ServerOptions
+	*NetworkOptions
+	*BlockchainOptions
+	*ConsensusOptions
 
 	logger log.Logger
-
-	PublicKey *crypto.PublicKey
-	Address   types.Address
 
 	state *types.AtomicNumber[ServerState]
 
 	closeCh   chan struct{}
 	closeOnce sync.Once
-	wg        sync.WaitGroup
 }
 
-func NewServer(so ServerOptions, no NetworkOptions, bo BlockchainOptions, co ConsensusOptions) (*Server, error) {
+func NewServer(so *ServerOptions, no *NetworkOptions, bo *BlockchainOptions, co *ConsensusOptions) (*Server, error) {
 	if !so.IsFulFilled() {
 		panic("ServerOptions is not fulfilled")
 	}
@@ -89,8 +80,6 @@ func NewServer(so ServerOptions, no NetworkOptions, bo BlockchainOptions, co Con
 		BlockchainOptions: bo,
 		ConsensusOptions:  co,
 		logger:            util.LoggerWithPrefixes("Server"),
-		PublicKey:         so.PrivateKey.PublicKey(),
-		Address:           so.PrivateKey.PublicKey().Address(),
 		state:             types.NewAtomicNumber[ServerState](Initialized),
 		closeCh:           make(chan struct{}),
 	}, nil
@@ -103,12 +92,13 @@ func (s *Server) Start(wg *sync.WaitGroup) {
 	s.Node.Listen()
 	s.Chain.Bootstrap()
 	s.ApiServer.Start()
+	s.Synchronizer.Start()
 
 	go s.manageConnections()
 	go s.heartbeatLoop()
 	go s.logLoop()
 
-	if err := s.Provider.Register(s.getOurInfo()); err != nil {
+	if err := s.PeerProvider.Register(s.getOurInfo()); err != nil {
 		panic(err)
 	}
 
@@ -117,17 +107,21 @@ func (s *Server) Start(wg *sync.WaitGroup) {
 
 func (s *Server) Stop() {
 	s.closeOnce.Do(func() {
+		s.state.Set(Offline)
+		close(s.closeCh)
+
+		s.PeerProvider.Deregister(s.getOurInfo())
 		s.Node.Close()
-		_ = s.logger.Log("msg", "node is shutting down")
 		s.ApiServer.Stop()
-		_ = s.logger.Log("msg", "api server is shutting down")
+		s.Synchronizer.Stop()
 
 		for _, engine := range s.ConsensusEngines {
 			engine.Stop()
 		}
 		_ = s.logger.Log("msg", "consensus engines are shutting down")
 
-		close(s.closeCh)
+		close(s.ForwardConsensusEngineMessageCh)
+		close(s.ForwardFinalizedBlockCh)
 	})
 }
 
@@ -161,12 +155,16 @@ func (s *Server) manageConnections() {
 }
 
 func (s *Server) discoverPeer() {
+	if !s.state.Eq(Online) {
+		return
+	}
+
 	currentPeers := s.Node.Peers()
 	if s.MaxPeers <= len(currentPeers) {
 		return
 	}
 
-	peerCandidates, err := s.Provider.DiscoverPeers()
+	peerCandidates, err := s.PeerProvider.DiscoverPeers()
 	if err != nil {
 		_ = s.logger.Log("msg", "failed to discover peers", "err", err)
 	}
@@ -219,6 +217,10 @@ func (s *Server) discoverPeer() {
 }
 
 func (s *Server) churningPeer() {
+	if !s.state.Eq(Online) {
+		return
+	}
+
 	currentPeers := s.Node.Peers()
 	if len(currentPeers) == 0 {
 		return
@@ -265,7 +267,7 @@ func (s *Server) heartbeatLoop() {
 		case <-s.closeCh:
 			return
 		case <-ticker.C:
-			if err := s.Provider.Heartbeat(s.getOurInfo()); err != nil {
+			if err := s.PeerProvider.Heartbeat(s.getOurInfo()); err != nil {
 				_ = s.logger.Log("msg", "failed to heartbeat", "err", err)
 			}
 		}
@@ -277,60 +279,337 @@ func (s *Server) loop() {
 	_ = s.logger.Log("msg", "server is online")
 
 	rawMsgCh := s.Node.ConsumeRawMessage()
-	// apiTxCh := s.ApiServer.ConsumeTransaction()
+	synchronizerMsgCh := s.Synchronizer.OutgoingMessage()
 
 	for {
 		select {
 		case <-s.closeCh:
 			return
-		case msg := <-rawMsgCh:
-			if err := s.processMessage(msg); err != nil {
-				_ = s.logger.Log("msg", "failed to process message", "err", err)
-				continue
-			}
-
-			// case tx := <-apiTxCh:
+		case m := <-rawMsgCh:
+			s.processRawMessage(m)
+		case sm := <-synchronizerMsgCh:
+			s.processSynchronizerMessage(sm)
+		case cm := <-s.ForwardConsensusEngineMessageCh:
+			s.processConsensusEngineMessage(cm)
+		case fb := <-s.ForwardFinalizedBlockCh:
+			s.processFinalizedBlock(fb)
 		}
 	}
 }
 
-func (s *Server) processMessage(rm message.RawMessage) error {
+func (s *Server) processRawMessage(rm message.RawMessage) {
+	if !s.state.Eq(Online) {
+		return
+	}
+
 	msgType := message.MessageType(rm.Payload()[0])
 	switch msgType {
 	case message.MessageGossipType:
-		return s.processGossipMessage(rm)
+		s.processGossipMessage(rm)
 	case message.MessageSyncType:
-		return s.processSyncMessage(rm)
+		s.processSyncMessage(rm)
 	case message.MessageConsensusType:
-		return s.processConsensusMessage(rm)
+		s.processConsensusMessage(rm)
+	}
+}
+
+func (s *Server) processGossipMessage(rm message.RawMessage) {
+	if !s.state.Eq(Online) {
+		return
+	}
+
+	m, err := s.GossipMessageCodec.Decode(rm.Payload())
+	if err != nil {
+		return
+	}
+
+	gossip := false
+	switch t := m.(type) {
+	case *block.Transaction:
+		if gossip, err = s.processGossipTransaction(rm.From(), t); err != nil {
+			switch {
+			case errors.Is(err, core.ErrMempoolFull):
+				_ = s.logger.Log("msg", "virtual memory pool is fulled", "err", err)
+			default:
+				_ = s.logger.Log("msg", "failed to process transaction", "err", err)
+			}
+		}
+	case *block.Block:
+		if gossip, err = s.processGossipBlock(rm.From(), t); err != nil {
+			switch {
+			case errors.Is(err, core.ErrBlockKnown):
+				break
+			case errors.Is(err, core.ErrFutureBlock):
+				s.Synchronizer.NotifyChainLagging()
+			case errors.Is(err, core.ErrUnknownParent):
+				s.Synchronizer.NotifyForkDetected(rm.From(), t)
+			default:
+				_ = s.logger.Log("msg", "failed to process block", "err", err)
+			}
+		}
+	}
+
+	if err != nil {
+		return
+	}
+
+	if gossip {
+		payload, err := s.GossipMessageCodec.Encode(m)
+
+		if err != nil {
+			_ = s.logger.Log("error", "failed to re-encode gossip message", "err", err)
+			return
+		}
+
+		select {
+		case <-s.closeCh:
+			return
+		default:
+		}
+
+		go func() {
+			_ = s.Node.Broadcast(payload)
+		}()
+	}
+}
+
+func (s *Server) processSyncMessage(rm message.RawMessage) {
+	if !s.state.Eq(Online) {
+		return
+	}
+
+	sm, err := s.SyncMessageCodec.Decode(rm.Payload())
+	if err != nil {
+		return
+	}
+
+	go s.Synchronizer.HandleMessage(rm.From(), sm)
+}
+
+func (s *Server) processConsensusMessage(rm message.RawMessage) {
+	if !s.state.Eq(Online) {
+		return
+	}
+
+	cm, err := s.ConsensusMessageCodec.Decode(rm.Payload())
+	if err != nil {
+		return
+	}
+
+	_, sequence := cm.Round()
+	engine, ok := s.ConsensusEngines[sequence]
+	if !ok {
+		s.startConsensusIfProposal(cm)
+		return
+	}
+
+	go engine.HandleMessage(cm)
+}
+
+func (s *Server) processSynchronizerMessage(sm synchronizer.SynchronizerMessage) {
+	if !s.state.Eq(Online) {
+		return
+	}
+
+	payload, err := s.SyncMessageCodec.Encode(sm.SyncMessage())
+	if err != nil {
+		return
+	}
+
+	if !sm.Address().IsZero() {
+		go func() {
+			_ = s.Node.Send(sm.Address(), payload)
+		}()
+
+		return
+	}
+
+	select {
+	case <-s.closeCh:
+		return
 	default:
-		return fmt.Errorf("unknown message type: %d", msgType)
 	}
+
+	go func() {
+		_ = s.Node.Broadcast(payload)
+	}()
 }
 
-func (s *Server) processGossipMessage(rm message.RawMessage) error {
-	_, err := s.GossipMessageCodec.Decode(rm.Payload())
-	if err != nil {
-		return err
+func (s *Server) processConsensusEngineMessage(cm consensus.ConsensusMessage) {
+	if !s.state.Eq(Online) {
+		return
 	}
 
-	return nil
+	payload, err := s.ConsensusMessageCodec.Encode(cm)
+	if err != nil {
+		return
+	}
+
+	select {
+	case <-s.closeCh:
+		return
+	default:
+	}
+
+	go func() {
+		_ = s.Node.Broadcast(payload)
+	}()
 }
 
-func (s *Server) processSyncMessage(rm message.RawMessage) error {
-	_, err := s.SyncMessageCodec.Decode(rm.Payload())
-	if err != nil {
-		return err
+func (s *Server) processGossipTransaction(from types.Address, tx *block.Transaction) (bool, error) {
+	if !s.state.Eq(Online) {
+		return false, nil
 	}
 
-	return nil
+	_ = s.logger.Log("msg", "processing gossip transaction", "from", from.ShortString(8))
+
+	if _, err := tx.Hash(); err != nil {
+		return false, err
+	}
+
+	if err := tx.Verify(); err != nil {
+		return false, err
+	}
+
+	if s.VirtualMemoryPool.Contains(tx) {
+		return false, nil
+	}
+
+	tx.FirstSeen()
+
+	if err := s.VirtualMemoryPool.Put(tx); err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
-func (s *Server) processConsensusMessage(rm message.RawMessage) error {
-	_, err := s.ConsensusMessageCodec.Decode(rm.Payload())
-	if err != nil {
-		return err
+func (s *Server) processGossipBlock(from types.Address, b *block.Block) (bool, error) {
+	if !s.state.Eq(Online) {
+		return false, nil
 	}
 
-	return nil
+	_ = s.logger.Log("msg", "processing gossip block", "from", from.ShortString(8), "height", b.Header.Height)
+
+	if !b.IsConsented() {
+		return false, nil
+	}
+
+	if _, err := b.Hash(); err != nil {
+		return false, err
+	}
+
+	if err := b.Verify(); err != nil {
+		return false, err
+	}
+
+	if err := s.Chain.AddBlock(b); err != nil {
+		return false, err
+	}
+
+	s.VirtualMemoryPool.Prune(b.Body.Transactions)
+
+	return true, nil
+}
+
+func (s *Server) processFinalizedBlock(fb *block.Block) {
+	if !s.state.Eq(Online) {
+		return
+	}
+
+	_ = s.logger.Log("msg", "processing finalized block", "height", fb.Header.Height)
+
+	if err := s.Chain.AddBlock(fb); err != nil {
+		if !errors.Is(err, core.ErrBlockKnown) {
+			_ = s.logger.Log("msg", "failed to add finalized block to chain", "err", err)
+		}
+	}
+
+	s.VirtualMemoryPool.Prune(fb.Body.Transactions)
+
+	go func() {
+		payload, err := s.GossipMessageCodec.Encode(fb)
+		if err != nil {
+			_ = s.logger.Log("msg", "failed to encode finalized block for broadcast", "err", err)
+			return
+		}
+		if err = s.Node.Broadcast(payload); err != nil {
+			_ = s.logger.Log("msg", "failed to broadcast finalized block", "err", err)
+		}
+	}()
+}
+
+func (s *Server) startConsensusIfProposal(cm consensus.ConsensusMessage) {
+	if !s.state.Eq(Online) {
+		return
+	}
+
+	b, isProposal := cm.ProposalBlock()
+	if !isProposal {
+		return
+	}
+	sequence := b.Header.Height
+	_ = s.logger.Log("msg", "received proposal for new consensus", "sequence", sequence)
+
+	vs, err := s.PeerProvider.GetValidators()
+	if err != nil {
+		_ = s.logger.Log("msg", "failed to get validators", "err", err)
+		return
+	}
+
+	vAddrs := make([]types.Address, len(vs))
+	for i, v := range vs {
+		addr, err := types.AddressFromHexString(v.Address)
+		if err != nil {
+			_ = s.logger.Log("msg", "failed to parse validator address", "err", err)
+			return
+		}
+		vAddrs[i] = addr
+	}
+
+	engine := s.ConsensusEngineFactory.NewConsensusEngine(s.PrivateKey, b, s.Processor, vAddrs)
+	s.ConsensusEngines[sequence] = engine
+
+	engine.Start()
+
+	go func(e consensus.ConsensusEngine, seq uint64) {
+		defer func() {
+			delete(s.ConsensusEngines, seq)
+			e.Stop()
+			_ = s.logger.Log("msg", "consensus engine terminated and cleaned up", "sequence", seq)
+		}()
+
+		outgoingMessageCh := e.OutgoingMessage()
+		finalizedBlockCh := e.FinalizedBlock()
+
+		for {
+			select {
+			case <-s.closeCh:
+				return
+			case m, ok := <-outgoingMessageCh:
+				if !ok {
+					return
+				}
+
+				select {
+				case <-s.closeCh:
+					return
+				case s.ForwardConsensusEngineMessageCh <- m:
+				}
+			case fb, ok := <-finalizedBlockCh:
+				if !ok {
+					return
+				}
+
+				select {
+				case <-s.closeCh:
+					return
+				case s.ForwardFinalizedBlockCh <- fb:
+					return
+				}
+			}
+		}
+	}(engine, sequence)
+
+	go engine.HandleMessage(cm)
 }

@@ -100,7 +100,7 @@ func (p *TcpPeer) Read() {
 
 func (p *TcpPeer) Close() {
 	p.closeOnce.Do(func() {
-		_ = p.logger.Log("msg", "closing connection", "address", p.address.ShortString(8), "net-addr", p.NetAddr)
+		_ = p.logger.Log("msg", "closing connection", "address", p.address.ShortString(8), "net-addr", p.NetAddr())
 
 		close(p.closeCh)
 		_ = p.conn.Close()

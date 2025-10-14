@@ -178,6 +178,14 @@ func (m *PbftPrePrepareMessage) Address() types.Address {
 	return m.PublicKey.Address()
 }
 
+func (m *PbftPrePrepareMessage) Round() (uint64, uint64) {
+	return m.View, m.Sequence
+}
+
+func (m *PbftPrePrepareMessage) ProposalBlock() (*block.Block, bool) {
+	return m.Block, true
+}
+
 /*
 	Phase 2: Prepare-Vote <PREPARE, v, n, m, d>
 
@@ -316,6 +324,14 @@ func (m *PbftPrepareMessage) EmptyProto() proto.Message {
 
 func (m *PbftPrepareMessage) Address() types.Address {
 	return m.PublicKey.Address()
+}
+
+func (m *PbftPrepareMessage) Round() (uint64, uint64) {
+	return m.View, m.Sequence
+}
+
+func (m *PbftPrepareMessage) ProposalBlock() (*block.Block, bool) {
+	return nil, false
 }
 
 /*
@@ -458,6 +474,14 @@ func (m *PbftCommitMessage) Address() types.Address {
 	return m.PublicKey.Address()
 }
 
+func (m *PbftCommitMessage) Round() (uint64, uint64) {
+	return m.View, m.Sequence
+}
+
+func (m *PbftCommitMessage) ProposalBlock() (*block.Block, bool) {
+	return nil, false
+}
+
 /*
 	Phase 1: View-Change-Vote <View-Change, v+1, n, d>
 
@@ -583,6 +607,14 @@ func (m *PbftViewChangeMessage) EmptyProto() proto.Message {
 
 func (m *PbftViewChangeMessage) Address() types.Address {
 	return m.PublicKey.Address()
+}
+
+func (m *PbftViewChangeMessage) Round() (uint64, uint64) {
+	return m.NewView, m.Sequence
+}
+
+func (m *PbftViewChangeMessage) ProposalBlock() (*block.Block, bool) {
+	return nil, false
 }
 
 /*
@@ -764,4 +796,12 @@ func (m *PbftNewViewMessage) EmptyProto() proto.Message {
 
 func (m *PbftNewViewMessage) Address() types.Address {
 	return m.PublicKey.Address()
+}
+
+func (m *PbftNewViewMessage) Round() (uint64, uint64) {
+	return m.NewView, m.Sequence
+}
+
+func (m *PbftNewViewMessage) ProposalBlock() (*block.Block, bool) {
+	return nil, false
 }
