@@ -14,9 +14,9 @@ func TestPbftProposer_Createblock(t *testing.T) {
 	tx := block.GenerateRandomTestTransaction(t)
 	assert.NoError(t, mp.Put(tx))
 
-	proposer := GenerateTestPbftProposer(t)
+	proposer := GenerateTestPbftProposer(t, bc, mp)
 
-	b, err := proposer.Createblock(bc, mp)
+	b, err := proposer.Createblock()
 	assert.NoError(t, err)
 	assert.NotNil(t, b)
 
@@ -26,7 +26,10 @@ func TestPbftProposer_Createblock(t *testing.T) {
 }
 
 func TestPbftProposer_ProposeBlock(t *testing.T) {
-	proposer := GenerateTestPbftProposer(t)
+	bc := core.GenerateTestBlockchain(t)
+	mp := core.GenerateTestMempool(t, 100)
+
+	proposer := GenerateTestPbftProposer(t, bc, mp)
 	testBlock := block.GenerateRandomTestBlockWithHeight(t, 1<<4, 10)
 	testBlock.Proposer = proposer.privKey.PublicKey()
 

@@ -7,20 +7,21 @@ import (
 	"github.com/andantan/modular-blockchain/types"
 	"github.com/andantan/modular-blockchain/util"
 	"github.com/go-kit/log"
-	"sort"
 )
 
 type PbftValidator struct {
-	logger       log.Logger
-	privKey      *crypto.PrivateKey
-	validatorSet *types.AtomicSet[types.Address]
+	logger         log.Logger
+	privKey        *crypto.PrivateKey
+	validatorSet   *types.AtomicSet[types.Address]
+	leaderSelector *PbftLeaderSelector
 }
 
 func NewPbftValidator(k *crypto.PrivateKey) *PbftValidator {
 	return &PbftValidator{
-		logger:       util.LoggerWithPrefixes("Validator"),
-		privKey:      k,
-		validatorSet: types.NewAtomicSet[types.Address](),
+		logger:         util.LoggerWithPrefixes("Validator"),
+		privKey:        k,
+		validatorSet:   types.NewAtomicSet[types.Address](),
+		leaderSelector: NewPbftLeaderSelector(),
 	}
 }
 
@@ -76,14 +77,9 @@ func (v *PbftValidator) GetValidatorSets() []types.Address {
 
 func (v *PbftValidator) GetLeader(view, sequence uint64) types.Address {
 	validators := v.validatorSet.Values()
+	round := view + sequence
 
-	sort.Slice(validators, func(i, j int) bool {
-		return validators[i].Lte(validators[j])
-	})
-
-	leaderIndex := int((view + sequence) % uint64(len(validators)))
-
-	return validators[leaderIndex]
+	return v.leaderSelector.SelectLeader(validators, round)
 }
 
 func (v *PbftValidator) validatePrePrepareMessage(m *PbftPrePrepareMessage) error {

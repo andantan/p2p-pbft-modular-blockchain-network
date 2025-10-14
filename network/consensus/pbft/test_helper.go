@@ -187,11 +187,11 @@ func GetLeaderFromTestValidators(t *testing.T, vs []*crypto.PrivateKey, view, se
 	return leaderKey
 }
 
-func GenerateTestPbftProposer(t *testing.T) *PbftProposer {
+func GenerateTestPbftProposer(t *testing.T, c core.Chain, mp core.VirtualMemoryPool) *PbftProposer {
 	t.Helper()
 
 	k, _ := crypto.GenerateTestKeyPair(t)
-	p := NewPbftProposer(k)
+	p := NewPbftProposer(k, c, mp)
 
 	assert.NotNil(t, p)
 

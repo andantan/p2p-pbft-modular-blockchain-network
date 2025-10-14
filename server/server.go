@@ -10,8 +10,6 @@ import (
 	"github.com/andantan/modular-blockchain/network/provider"
 	"github.com/andantan/modular-blockchain/network/synchronizer"
 	"github.com/andantan/modular-blockchain/types"
-	"github.com/andantan/modular-blockchain/util"
-	"github.com/go-kit/log"
 	"math/rand"
 	"sort"
 	"strings"
@@ -49,8 +47,6 @@ type Server struct {
 	*BlockchainOptions
 	*ConsensusOptions
 
-	logger log.Logger
-
 	state *types.AtomicNumber[ServerState]
 
 	closeCh   chan struct{}
@@ -79,7 +75,6 @@ func NewServer(so *ServerOptions, no *NetworkOptions, bo *BlockchainOptions, co 
 		NetworkOptions:    no,
 		BlockchainOptions: bo,
 		ConsensusOptions:  co,
-		logger:            util.LoggerWithPrefixes("Server"),
 		state:             types.NewAtomicNumber[ServerState](Initialized),
 		closeCh:           make(chan struct{}),
 	}, nil
@@ -94,7 +89,8 @@ func (s *Server) Start(wg *sync.WaitGroup) {
 	s.ApiServer.Start()
 	s.Synchronizer.Start()
 
-	go s.manageConnections()
+	go s.connectionManagerLoop()
+	go s.proposerLoop()
 	go s.heartbeatLoop()
 	go s.logLoop()
 
@@ -102,7 +98,7 @@ func (s *Server) Start(wg *sync.WaitGroup) {
 		panic(err)
 	}
 
-	s.loop()
+	s.mainLoop()
 }
 
 func (s *Server) Stop() {
@@ -118,7 +114,7 @@ func (s *Server) Stop() {
 		for _, engine := range s.ConsensusEngines {
 			engine.Stop()
 		}
-		_ = s.logger.Log("msg", "consensus engines are shutting down")
+		_ = s.Logger.Log("msg", "consensus engines are shutting down")
 
 		close(s.ForwardConsensusEngineMessageCh)
 		close(s.ForwardFinalizedBlockCh)
@@ -136,7 +132,7 @@ func (s *Server) getOurInfo() *provider.PeerInfo {
 	}
 }
 
-func (s *Server) manageConnections() {
+func (s *Server) connectionManagerLoop() {
 	ticker := time.NewTicker(1 * time.Minute)
 	defer ticker.Stop()
 
@@ -166,7 +162,7 @@ func (s *Server) discoverPeer() {
 
 	peerCandidates, err := s.PeerProvider.DiscoverPeers()
 	if err != nil {
-		_ = s.logger.Log("msg", "failed to discover peers", "err", err)
+		_ = s.Logger.Log("msg", "failed to discover peers", "err", err)
 	}
 
 	if len(peerCandidates) == 0 {
@@ -207,11 +203,11 @@ func (s *Server) discoverPeer() {
 	})
 
 	best := filter[0]
-	_ = s.logger.Log("msg", "discovered peers", "peer_net_addr", best.NetAddr, "peer_address", best.Address)
+	_ = s.Logger.Log("msg", "discovered peers", "peer_net_addr", best.NetAddr, "peer_address", best.Address)
 
 	go func() {
 		if err := s.Node.Connect(best.NetAddr); err != nil {
-			_ = s.logger.Log("msg", "failed to connect to best peer", "peer_net_addr", best.NetAddr, "peer_address", best.Address, "err", err)
+			_ = s.Logger.Log("msg", "failed to connect to best peer", "peer_net_addr", best.NetAddr, "peer_address", best.Address, "err", err)
 		}
 	}()
 }
@@ -229,7 +225,7 @@ func (s *Server) churningPeer() {
 	randomIndex := rand.Intn(len(currentPeers))
 	randomPeer := currentPeers[randomIndex]
 
-	_ = s.logger.Log("msg", "churning peer", "peer_address", randomPeer.ShortString(8))
+	_ = s.Logger.Log("msg", "churning peer", "peer_address", randomPeer.ShortString(8))
 	s.Node.Disconnect(randomPeer)
 }
 
@@ -253,7 +249,7 @@ func (s *Server) logLoop() {
 			peerStr := fmt.Sprintf("[%s]", strings.Join(peersAddrStr, ", "))
 			connStr := fmt.Sprintf("(%d/%d)", len(peers), s.MaxPeers)
 
-			_ = s.logger.Log("height", s.Chain.GetCurrentHeight(), "state", s.state.Get(), "conn", connStr, "peer", peerStr)
+			_ = s.Logger.Log("height", s.Chain.GetCurrentHeight(), "state", s.state.Get(), "conn", connStr, "peer", peerStr)
 		}
 	}
 }
@@ -268,15 +264,82 @@ func (s *Server) heartbeatLoop() {
 			return
 		case <-ticker.C:
 			if err := s.PeerProvider.Heartbeat(s.getOurInfo()); err != nil {
-				_ = s.logger.Log("msg", "failed to heartbeat", "err", err)
+				_ = s.Logger.Log("msg", "failed to heartbeat", "err", err)
 			}
 		}
 	}
 }
 
-func (s *Server) loop() {
+func (s *Server) proposerLoop() {
+	ticker := time.NewTicker(s.BlockTime)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-s.closeCh:
+			return
+		case <-ticker.C:
+			s.proposeBlockIfProposer()
+		}
+	}
+}
+
+func (s *Server) proposeBlockIfProposer() {
+	nextHeight := s.Chain.GetCurrentHeight() + 1
+	vspi, err := s.PeerProvider.GetValidators()
+	if err != nil {
+		_ = s.Logger.Log("msg", "failed to get validators", "err", err)
+		return
+	}
+
+	vAddrs := make([]types.Address, len(vspi))
+	for _, vpi := range vspi {
+		vAddr, err := types.AddressFromHexString(vpi.Address)
+		if err != nil {
+			return
+		}
+		vAddrs = append(vAddrs, vAddr)
+	}
+
+	roundProposer := s.LeaderSelector.SelectLeader(vAddrs, nextHeight)
+
+	if !roundProposer.Equal(s.Address) {
+		_ = s.Logger.Log("msg", "not our turn to propose", "height", nextHeight)
+		return
+	}
+
+	newBlock, err := s.Proposer.Createblock()
+	if err != nil {
+		return
+	}
+
+	_ = s.Logger.Log("msg", "our turn to propose", "height", nextHeight)
+
+	proposeMessage, err := s.Proposer.ProposeBlock(newBlock)
+	if err != nil {
+		_ = s.Logger.Log("msg", "failed to propose block, will be re-election start", "err", err)
+	}
+
+	// start propose
+	payload, err := s.ConsensusMessageCodec.Encode(proposeMessage)
+	if err != nil {
+		return
+	}
+
+	select {
+	case <-s.closeCh:
+		return
+	default:
+	}
+
+	go func() {
+		_ = s.Node.Broadcast(payload)
+	}()
+}
+
+func (s *Server) mainLoop() {
 	s.state.Set(Online)
-	_ = s.logger.Log("msg", "server is online")
+	_ = s.Logger.Log("msg", "server is online")
 
 	rawMsgCh := s.Node.ConsumeRawMessage()
 	synchronizerMsgCh := s.Synchronizer.OutgoingMessage()
@@ -329,9 +392,9 @@ func (s *Server) processGossipMessage(rm message.RawMessage) {
 		if gossip, err = s.processGossipTransaction(rm.From(), t); err != nil {
 			switch {
 			case errors.Is(err, core.ErrMempoolFull):
-				_ = s.logger.Log("msg", "virtual memory pool is fulled", "err", err)
+				_ = s.Logger.Log("msg", "virtual memory pool is fulled", "err", err)
 			default:
-				_ = s.logger.Log("msg", "failed to process transaction", "err", err)
+				_ = s.Logger.Log("msg", "failed to process transaction", "err", err)
 			}
 		}
 	case *block.Block:
@@ -344,7 +407,7 @@ func (s *Server) processGossipMessage(rm message.RawMessage) {
 			case errors.Is(err, core.ErrUnknownParent):
 				s.Synchronizer.NotifyForkDetected(rm.From(), t)
 			default:
-				_ = s.logger.Log("msg", "failed to process block", "err", err)
+				_ = s.Logger.Log("msg", "failed to process block", "err", err)
 			}
 		}
 	}
@@ -357,7 +420,7 @@ func (s *Server) processGossipMessage(rm message.RawMessage) {
 		payload, err := s.GossipMessageCodec.Encode(m)
 
 		if err != nil {
-			_ = s.logger.Log("error", "failed to re-encode gossip message", "err", err)
+			_ = s.Logger.Log("error", "failed to re-encode gossip message", "err", err)
 			return
 		}
 
@@ -461,7 +524,7 @@ func (s *Server) processGossipTransaction(from types.Address, tx *block.Transact
 		return false, nil
 	}
 
-	_ = s.logger.Log("msg", "processing gossip transaction", "from", from.ShortString(8))
+	_ = s.Logger.Log("msg", "processing gossip transaction", "from", from.ShortString(8))
 
 	if _, err := tx.Hash(); err != nil {
 		return false, err
@@ -489,7 +552,7 @@ func (s *Server) processGossipBlock(from types.Address, b *block.Block) (bool, e
 		return false, nil
 	}
 
-	_ = s.logger.Log("msg", "processing gossip block", "from", from.ShortString(8), "height", b.Header.Height)
+	_ = s.Logger.Log("msg", "processing gossip block", "from", from.ShortString(8), "height", b.Header.Height)
 
 	if !b.IsConsented() {
 		return false, nil
@@ -517,11 +580,11 @@ func (s *Server) processFinalizedBlock(fb *block.Block) {
 		return
 	}
 
-	_ = s.logger.Log("msg", "processing finalized block", "height", fb.Header.Height)
+	_ = s.Logger.Log("msg", "processing finalized block", "height", fb.Header.Height)
 
 	if err := s.Chain.AddBlock(fb); err != nil {
 		if !errors.Is(err, core.ErrBlockKnown) {
-			_ = s.logger.Log("msg", "failed to add finalized block to chain", "err", err)
+			_ = s.Logger.Log("msg", "failed to add finalized block to chain", "err", err)
 		}
 	}
 
@@ -530,11 +593,11 @@ func (s *Server) processFinalizedBlock(fb *block.Block) {
 	go func() {
 		payload, err := s.GossipMessageCodec.Encode(fb)
 		if err != nil {
-			_ = s.logger.Log("msg", "failed to encode finalized block for broadcast", "err", err)
+			_ = s.Logger.Log("msg", "failed to encode finalized block for broadcast", "err", err)
 			return
 		}
 		if err = s.Node.Broadcast(payload); err != nil {
-			_ = s.logger.Log("msg", "failed to broadcast finalized block", "err", err)
+			_ = s.Logger.Log("msg", "failed to broadcast finalized block", "err", err)
 		}
 	}()
 }
@@ -549,11 +612,11 @@ func (s *Server) startConsensusIfProposal(cm consensus.ConsensusMessage) {
 		return
 	}
 	sequence := b.Header.Height
-	_ = s.logger.Log("msg", "received proposal for new consensus", "sequence", sequence)
+	_ = s.Logger.Log("msg", "received proposal for new consensus", "sequence", sequence)
 
 	vs, err := s.PeerProvider.GetValidators()
 	if err != nil {
-		_ = s.logger.Log("msg", "failed to get validators", "err", err)
+		_ = s.Logger.Log("msg", "failed to get validators", "err", err)
 		return
 	}
 
@@ -561,7 +624,7 @@ func (s *Server) startConsensusIfProposal(cm consensus.ConsensusMessage) {
 	for i, v := range vs {
 		addr, err := types.AddressFromHexString(v.Address)
 		if err != nil {
-			_ = s.logger.Log("msg", "failed to parse validator address", "err", err)
+			_ = s.Logger.Log("msg", "failed to parse validator address", "err", err)
 			return
 		}
 		vAddrs[i] = addr
@@ -576,7 +639,7 @@ func (s *Server) startConsensusIfProposal(cm consensus.ConsensusMessage) {
 		defer func() {
 			delete(s.ConsensusEngines, seq)
 			e.Stop()
-			_ = s.logger.Log("msg", "consensus engine terminated and cleaned up", "sequence", seq)
+			_ = s.Logger.Log("msg", "consensus engine terminated and cleaned up", "sequence", seq)
 		}()
 
 		outgoingMessageCh := e.OutgoingMessage()

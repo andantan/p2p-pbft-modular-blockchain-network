@@ -10,25 +10,29 @@ import (
 )
 
 type PbftProposer struct {
-	logger  log.Logger
-	privKey *crypto.PrivateKey
+	logger            log.Logger
+	privKey           *crypto.PrivateKey
+	chain             core.Chain
+	virtualMemoryPool core.VirtualMemoryPool
 }
 
-func NewPbftProposer(k *crypto.PrivateKey) *PbftProposer {
+func NewPbftProposer(k *crypto.PrivateKey, c core.Chain, mp core.VirtualMemoryPool) *PbftProposer {
 	return &PbftProposer{
-		logger:  util.LoggerWithPrefixes("Proposer"),
-		privKey: k,
+		logger:            util.LoggerWithPrefixes("Proposer"),
+		privKey:           k,
+		chain:             c,
+		virtualMemoryPool: mp,
 	}
 }
 
-func (p *PbftProposer) Createblock(c core.Chain, mp core.VirtualMemoryPool) (*block.Block, error) {
-	ph, err := c.GetCurrentHeader()
+func (p *PbftProposer) Createblock() (*block.Block, error) {
+	ph, err := p.chain.GetCurrentHeader()
 
 	if err != nil {
 		return nil, err
 	}
 
-	txx, err := mp.Pending()
+	txx, err := p.virtualMemoryPool.Pending()
 
 	if err != nil {
 		return nil, err

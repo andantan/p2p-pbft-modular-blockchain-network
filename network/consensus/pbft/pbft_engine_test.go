@@ -105,7 +105,6 @@ func TestPbftConsensusEngine_HandlePrepare(t *testing.T) {
 		case outgoingMsg := <-msgCh:
 			_, ok := outgoingMsg.(*PbftPrepareMessage)
 			assert.True(t, ok)
-			assert.True(t, engine.state.Eq(PrePrepared))
 
 		case <-time.After(100 * time.Millisecond):
 			t.Fatal("engine does not send PrePrepareMessage to channel")

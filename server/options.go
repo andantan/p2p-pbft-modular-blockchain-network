@@ -11,6 +11,7 @@ import (
 	"github.com/andantan/modular-blockchain/network/provider"
 	"github.com/andantan/modular-blockchain/network/synchronizer"
 	"github.com/andantan/modular-blockchain/types"
+	"github.com/go-kit/log"
 	"time"
 )
 
@@ -156,6 +157,7 @@ func (o *BlockchainOptions) IsFulFilled() bool {
 
 type ConsensusOptions struct {
 	Proposer                        consensus.Proposer
+	LeaderSelector                  consensus.LeaderSelector
 	ConsensusEngines                map[uint64]consensus.ConsensusEngine
 	ConsensusEngineFactory          consensus.ConsensusEngineFactory
 	ConsensusMessageCodec           consensus.ConsensusMessageCodec
@@ -176,6 +178,11 @@ func (o *ConsensusOptions) WithProposer(p consensus.Proposer) *ConsensusOptions 
 	return o
 }
 
+func (o *ConsensusOptions) WithLeaderSelector(s consensus.LeaderSelector) *ConsensusOptions {
+	o.LeaderSelector = s
+	return o
+}
+
 func (o *ConsensusOptions) WithConsensusEngineFactory(f consensus.ConsensusEngineFactory) *ConsensusOptions {
 	o.ConsensusEngineFactory = f
 	return o
@@ -188,6 +195,10 @@ func (o *ConsensusOptions) WithConsensusMessageCodec(c consensus.ConsensusMessag
 
 func (o *ConsensusOptions) IsFulFilled() bool {
 	if o.Proposer == nil {
+		return false
+	}
+
+	if o.LeaderSelector == nil {
 		return false
 	}
 
@@ -215,6 +226,7 @@ func (o *ConsensusOptions) IsFulFilled() bool {
 }
 
 type ServerOptions struct {
+	Logger        log.Logger
 	PrivateKey    *crypto.PrivateKey
 	PublicKey     *crypto.PublicKey
 	Address       types.Address
@@ -227,6 +239,11 @@ func NewServerOptions(isValidator bool) *ServerOptions {
 	return &ServerOptions{
 		IsValidator: isValidator,
 	}
+}
+
+func (o *ServerOptions) WithLogger(l log.Logger) *ServerOptions {
+	o.Logger = l
+	return o
 }
 
 func (o *ServerOptions) WithPrivateKey(k *crypto.PrivateKey) *ServerOptions {
@@ -247,6 +264,10 @@ func (o *ServerOptions) WithApiListenAddr(apiListenAddr string) *ServerOptions {
 }
 
 func (o *ServerOptions) IsFulFilled() bool {
+	if o.Logger == nil {
+		return false
+	}
+
 	if o.PrivateKey == nil {
 		return false
 	}
