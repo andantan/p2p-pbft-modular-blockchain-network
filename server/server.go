@@ -53,7 +53,7 @@ type Server struct {
 	closeOnce sync.Once
 }
 
-func NewServer(so *ServerOptions, no *NetworkOptions, bo *BlockchainOptions, co *ConsensusOptions) (*Server, error) {
+func NewServer(so *ServerOptions, no *NetworkOptions, bo *BlockchainOptions, co *ConsensusOptions) *Server {
 	if !so.IsFulFilled() {
 		panic("ServerOptions is not fulfilled")
 	}
@@ -77,7 +77,7 @@ func NewServer(so *ServerOptions, no *NetworkOptions, bo *BlockchainOptions, co 
 		ConsensusOptions:  co,
 		state:             types.NewAtomicNumber[ServerState](Initialized),
 		closeCh:           make(chan struct{}),
-	}, nil
+	}
 }
 
 func (s *Server) Start(wg *sync.WaitGroup) {
@@ -97,6 +97,8 @@ func (s *Server) Start(wg *sync.WaitGroup) {
 	if err := s.PeerProvider.Register(s.getOurInfo()); err != nil {
 		panic(err)
 	}
+
+	go s.discoverPeer()
 
 	s.mainLoop()
 }
@@ -293,18 +295,18 @@ func (s *Server) proposeBlockIfProposer() {
 	}
 
 	vAddrs := make([]types.Address, len(vspi))
-	for _, vpi := range vspi {
+	for i, vpi := range vspi {
 		vAddr, err := types.AddressFromHexString(vpi.Address)
 		if err != nil {
 			return
 		}
-		vAddrs = append(vAddrs, vAddr)
+		vAddrs[i] = vAddr
 	}
 
 	roundProposer := s.LeaderSelector.SelectLeader(vAddrs, nextHeight)
 
 	if !roundProposer.Equal(s.Address) {
-		_ = s.Logger.Log("msg", "not our turn to propose", "height", nextHeight)
+		_ = s.Logger.Log("msg", "not our turn to propose", "our_address", s.Address.ShortString(8), "leader", roundProposer.ShortString(8))
 		return
 	}
 

@@ -235,11 +235,11 @@ func (e *PbftConsensusEngine) handlePrePrepareMessage(m *PbftPrePrepareMessage) 
 	}
 
 	if err := e.processor.ProcessBlock(m.Block); err != nil {
-		if errors.Is(err, core.ErrBlockKnown) {
-			return nil, nil
+		if !(errors.Is(err, core.ErrBlockKnown) || errors.Is(err, core.ErrFutureBlock)) {
+			return nil, err
 		}
-
-		return nil, err
+		//
+		//return nil, err
 	}
 
 	e.sendToOutgoing(m) // gossip

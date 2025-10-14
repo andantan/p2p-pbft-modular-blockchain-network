@@ -85,29 +85,16 @@ type ChainSynchroizer struct {
 }
 
 func NewChainSynchronizer(address types.Address, netAddr string, chain core.Chain) *ChainSynchroizer {
-	gh, err := chain.GetHeaderByHeight(0)
-
-	if err != nil {
-		panic(fmt.Sprintf("Synchronizer error: %s", err))
-	}
-
-	gbh, err := gh.Hash()
-
-	if err != nil {
-		panic(fmt.Sprintf("Synchronizer error: %s", err))
-	}
-
 	return &ChainSynchroizer{
-		logger:           util.LoggerWithPrefixes("Synchronizer"),
-		address:          address,
-		netAddr:          netAddr,
-		state:            types.NewAtomicNumber[SyncState](Initialized),
-		availablePeers:   types.NewAtomicMap[types.Address, *PeerState](),
-		chain:            chain,
-		genesisBlockHash: gbh,
-		internalMsgCh:    make(chan *InternalSyncMessage, 100),
-		outgoingMsgCh:    make(chan SynchronizerMessage, 100),
-		closeCh:          make(chan struct{}),
+		logger:         util.LoggerWithPrefixes("Synchronizer"),
+		address:        address,
+		netAddr:        netAddr,
+		state:          types.NewAtomicNumber[SyncState](Initialized),
+		availablePeers: types.NewAtomicMap[types.Address, *PeerState](),
+		chain:          chain,
+		internalMsgCh:  make(chan *InternalSyncMessage, 100),
+		outgoingMsgCh:  make(chan SynchronizerMessage, 100),
+		closeCh:        make(chan struct{}),
 	}
 }
 
@@ -115,6 +102,18 @@ func (s *ChainSynchroizer) Start() {
 	if !s.state.CompareAndSwap(Initialized, Idle) {
 		return
 	}
+
+	gh, err := s.chain.GetHeaderByHeight(0)
+	if err != nil {
+		panic(fmt.Sprintf("Synchronizer error: %s", err))
+	}
+
+	gbh, err := gh.Hash()
+	if err != nil {
+		panic(fmt.Sprintf("Synchronizer error: %s", err))
+	}
+
+	s.genesisBlockHash = gbh
 
 	_ = s.logger.Log("msg", "changed state", "state", s.state.Get())
 
