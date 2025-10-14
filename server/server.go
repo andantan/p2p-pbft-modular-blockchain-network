@@ -343,6 +343,7 @@ func (s *Server) mainLoop() {
 
 	rawMsgCh := s.Node.ConsumeRawMessage()
 	synchronizerMsgCh := s.Synchronizer.OutgoingMessage()
+	apiTxCh := s.ApiServer.ConsumeTransaction()
 
 	for {
 		select {
@@ -356,6 +357,8 @@ func (s *Server) mainLoop() {
 			s.processConsensusEngineMessage(cm)
 		case fb := <-s.ForwardFinalizedBlockCh:
 			s.processFinalizedBlock(fb)
+		case tx := <-apiTxCh:
+			s.processCreatedTransaction(tx)
 		}
 	}
 }
@@ -599,6 +602,40 @@ func (s *Server) processFinalizedBlock(fb *block.Block) {
 		if err = s.Node.Broadcast(payload); err != nil {
 			_ = s.Logger.Log("msg", "failed to broadcast finalized block", "err", err)
 		}
+	}()
+}
+
+func (s *Server) processCreatedTransaction(tx *block.Transaction) {
+	if !s.state.Eq(Online) {
+		return
+	}
+
+	_ = s.Logger.Log("msg", "process created transaction", "from", tx.From.Address().ShortString(8))
+
+	if s.VirtualMemoryPool.Contains(tx) {
+		return
+	}
+
+	tx.FirstSeen()
+
+	if err := s.VirtualMemoryPool.Put(tx); err != nil {
+		return
+	}
+
+	payload, err := s.GossipMessageCodec.Encode(tx)
+
+	if err != nil {
+		return
+	}
+
+	select {
+	case <-s.closeCh:
+		return
+	default:
+	}
+
+	go func() {
+		_ = s.Node.Broadcast(payload)
 	}()
 }
 

@@ -16,6 +16,8 @@ import (
 )
 
 type NetworkOptions struct {
+	ListenAddr         string
+	ApiListenAddr      string
 	MaxPeers           int
 	Node               protocol.Node
 	PeerProvider       provider.PeerProvider
@@ -29,7 +31,8 @@ func NewNetworkOptions() *NetworkOptions {
 	return &NetworkOptions{}
 }
 
-func (o *NetworkOptions) WithNode(maxPeers int, node protocol.Node) *NetworkOptions {
+func (o *NetworkOptions) WithNode(addr string, maxPeers int, node protocol.Node) *NetworkOptions {
+	o.ListenAddr = addr
 	o.MaxPeers = maxPeers
 	o.Node = node
 	return o
@@ -40,7 +43,8 @@ func (o *NetworkOptions) WithPeerProvider(p provider.PeerProvider) *NetworkOptio
 	return o
 }
 
-func (o *NetworkOptions) WithApiServer(s api.ApiServer) *NetworkOptions {
+func (o *NetworkOptions) WithApiServer(apiAddr string, s api.ApiServer) *NetworkOptions {
+	o.ApiListenAddr = apiAddr
 	o.ApiServer = s
 	return o
 }
@@ -61,11 +65,19 @@ func (o *NetworkOptions) WithSyncMessageCodec(c synchronizer.SyncMessageCodec) *
 }
 
 func (o *NetworkOptions) IsFulFilled() bool {
+	if o.ListenAddr == "" {
+		return false
+	}
+
 	if o.MaxPeers <= 0 {
 		return false
 	}
 
 	if o.Node == nil {
+		return false
+	}
+
+	if o.ApiListenAddr == "" {
 		return false
 	}
 
@@ -226,13 +238,11 @@ func (o *ConsensusOptions) IsFulFilled() bool {
 }
 
 type ServerOptions struct {
-	Logger        log.Logger
-	PrivateKey    *crypto.PrivateKey
-	PublicKey     *crypto.PublicKey
-	Address       types.Address
-	ListenAddr    string
-	ApiListenAddr string
-	IsValidator   bool
+	Logger      log.Logger
+	PrivateKey  *crypto.PrivateKey
+	PublicKey   *crypto.PublicKey
+	Address     types.Address
+	IsValidator bool
 }
 
 func NewServerOptions(isValidator bool) *ServerOptions {
@@ -253,16 +263,6 @@ func (o *ServerOptions) WithPrivateKey(k *crypto.PrivateKey) *ServerOptions {
 	return o
 }
 
-func (o *ServerOptions) WithListenAddr(listenAddr string) *ServerOptions {
-	o.ListenAddr = listenAddr
-	return o
-}
-
-func (o *ServerOptions) WithApiListenAddr(apiListenAddr string) *ServerOptions {
-	o.ApiListenAddr = apiListenAddr
-	return o
-}
-
 func (o *ServerOptions) IsFulFilled() bool {
 	if o.Logger == nil {
 		return false
@@ -277,14 +277,6 @@ func (o *ServerOptions) IsFulFilled() bool {
 	}
 
 	if o.Address.Equal(types.Address{}) {
-		return false
-	}
-
-	if o.ListenAddr == "" {
-		return false
-	}
-
-	if o.ApiListenAddr == "" {
 		return false
 	}
 

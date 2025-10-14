@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/andantan/modular-blockchain/core/block"
 	"github.com/andantan/modular-blockchain/network/provider"
 	"github.com/andantan/modular-blockchain/types"
 	"github.com/andantan/modular-blockchain/util"
@@ -56,4 +57,24 @@ func (m *MockPeerProvider) Deregister(our *provider.PeerInfo) {
 	addr, _ := types.AddressFromHexString(our.Address)
 	delete(m.Peers, addr)
 	return
+}
+
+type MockApiServer struct {
+	MockTxCh chan *block.Transaction
+}
+
+func GenerateMockApiServer() *MockApiServer {
+	return &MockApiServer{}
+}
+
+func (m *MockApiServer) Start() {
+	m.MockTxCh = make(chan *block.Transaction, 10)
+}
+
+func (m *MockApiServer) ConsumeTransaction() <-chan *block.Transaction {
+	return m.MockTxCh
+}
+
+func (m *MockApiServer) Stop() {
+	close(m.MockTxCh)
 }
