@@ -68,6 +68,7 @@ func TestPbftConsensusEngine_HandlePrepare(t *testing.T) {
 
 	handler(ppMsg)
 
+	// gossip test
 	select {
 	case outgoingMsg := <-msgCh:
 		_, ok := outgoingMsg.(*PbftPrePrepareMessage)
@@ -78,6 +79,7 @@ func TestPbftConsensusEngine_HandlePrepare(t *testing.T) {
 		t.Fatal("engine does not send PrePrepareMessage to channel")
 	}
 
+	// state change test
 	select {
 	case outgoingMsg := <-msgCh:
 		_, ok := outgoingMsg.(*PbftPrepareMessage)
@@ -100,6 +102,7 @@ func TestPbftConsensusEngine_HandlePrepare(t *testing.T) {
 		handler(pm)
 	}
 
+	// gossip test
 	for i := 0; i < engine.quorum; i++ {
 		select {
 		case outgoingMsg := <-msgCh:

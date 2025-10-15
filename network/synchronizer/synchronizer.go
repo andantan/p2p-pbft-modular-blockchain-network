@@ -18,6 +18,7 @@ type Synchronizer interface {
 	Start()
 	HandleMessage(types.Address, SyncMessage)
 	OutgoingMessage() <-chan SynchronizerMessage
+	IsSynchronized() bool
 	NotifyForkDetected(types.Address, *block.Block)
 	NotifyChainLagging()
 	Stop()
@@ -146,6 +147,10 @@ func (s *ChainSynchroizer) OutgoingMessage() <-chan SynchronizerMessage {
 	return s.outgoingMsgCh
 }
 
+func (s *ChainSynchroizer) IsSynchronized() bool {
+	return s.state.Eq(Synchronized)
+}
+
 func (s *ChainSynchroizer) NotifyForkDetected(from types.Address, b *block.Block) {
 	_ = s.logger.Log("msg", "received fork-detect notification", "from", from.ShortString(8), "block_height", b.Header.Height)
 
@@ -189,8 +194,8 @@ func (s *ChainSynchroizer) Stop() {
 }
 
 func (s *ChainSynchroizer) run() {
-	timer := time.NewTimer(10 * time.Second)
-	defer timer.Stop()
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
 
 	_ = s.logger.Log("msg", "start Synchronizer", "state", s.state.Get())
 
@@ -199,7 +204,7 @@ func (s *ChainSynchroizer) run() {
 		case <-s.closeCh:
 			_ = s.logger.Log("msg", "exit synchronizer loop", "state", s.state.Get())
 			return
-		case <-timer.C:
+		case <-ticker.C:
 			s.synchronize()
 		case msg := <-s.internalMsgCh:
 			if msg == nil {
@@ -443,6 +448,7 @@ func (s *ChainSynchroizer) synchronize() {
 	s.removeBehindPeers()
 
 	bestPeer := s.findBestPeer()
+
 	if bestPeer == nil {
 		_ = s.logger.Log("msg", "no available peers to sync with, broadcasting for status")
 		m := &BroadcastMessage{
@@ -471,19 +477,25 @@ func (s *ChainSynchroizer) synchronize() {
 		s.state.Set(Synchronized)
 		_ = s.logger.Log("msg", "changed state", "state", s.state.Get())
 	}
+
+	_ = s.logger.Log("state", s.state.Get(), "available_peers", s.availablePeers.Len())
 }
 
 func (s *ChainSynchroizer) findBestPeer() *PeerState {
-	highestHeight := s.chain.GetCurrentHeight()
-
+	highestHeight := uint64(0)
+	ourHeight := s.chain.GetCurrentHeight()
 	bestPeers := make([]*PeerState, 0)
+
 	s.availablePeers.Range(func(addr types.Address, state *PeerState) bool {
-		if state.Height > highestHeight {
-			highestHeight = state.Height
-			bestPeers = []*PeerState{state}
-		} else if state.Height == highestHeight && highestHeight >= s.chain.GetCurrentHeight() {
-			bestPeers = append(bestPeers, state)
+		if state.Height >= ourHeight {
+			if state.Height > highestHeight {
+				highestHeight = state.Height
+				bestPeers = []*PeerState{state}
+			} else if state.Height == highestHeight {
+				bestPeers = append(bestPeers, state)
+			}
 		}
+
 		return true
 	})
 

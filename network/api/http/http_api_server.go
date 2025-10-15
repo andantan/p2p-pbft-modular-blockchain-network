@@ -106,11 +106,13 @@ func (s *HttpApiServer) handleCreateTransaction(w http.ResponseWriter, r *http.R
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
-	select {
-	case <-s.closeCh:
-		return
-	case s.txCh <- tx:
-	}
+	go func() {
+		select {
+		case <-s.closeCh:
+			return
+		case s.txCh <- tx:
+		}
+	}()
 
 	resp := HttpTransactionCreateResponse{
 		TransactionHash: txHash.String(),
@@ -135,11 +137,13 @@ func (s *HttpApiServer) handleMakeRandomTransaction(w http.ResponseWriter, r *ht
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
-	select {
-	case <-s.closeCh:
-		return
-	case s.txCh <- tx:
-	}
+	go func() {
+		select {
+		case <-s.closeCh:
+			return
+		case s.txCh <- tx:
+		}
+	}()
 
 	resp := HttpTransactionCreateResponse{
 		TransactionHash: txHash.String(),
