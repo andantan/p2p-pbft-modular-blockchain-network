@@ -251,7 +251,7 @@ func (s *Server) logLoop() {
 			peerStr := fmt.Sprintf("[%s]", strings.Join(peersAddrStr, ", "))
 			connStr := fmt.Sprintf("(%d/%d)", len(peers), s.MaxPeers)
 
-			_ = s.Logger.Log("height", s.Chain.GetCurrentHeight(), "state", s.state.Get(), "conn", connStr, "peer", peerStr)
+			_ = s.Logger.Log("state", s.state.Get(), "height", s.Chain.GetCurrentHeight(), "pending", s.VirtualMemoryPool.Count(), "conn", connStr, "peer", peerStr)
 		}
 	}
 }
@@ -459,6 +459,10 @@ func (s *Server) processConsensusMessage(rm message.RawMessage) {
 		return
 	}
 
+	if !s.Synchronizer.IsSynchronized() {
+		return
+	}
+
 	cm, err := s.ConsensusMessageCodec.Decode(rm.Payload())
 	if err != nil {
 		return
@@ -643,6 +647,10 @@ func (s *Server) processCreatedTransaction(tx *block.Transaction) {
 
 func (s *Server) startConsensusIfProposal(cm consensus.ConsensusMessage) {
 	if !s.state.Eq(Online) {
+		return
+	}
+
+	if !s.Synchronizer.IsSynchronized() {
 		return
 	}
 

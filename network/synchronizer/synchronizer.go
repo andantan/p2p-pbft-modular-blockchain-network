@@ -59,6 +59,7 @@ type PeerState struct {
 	Height    uint64
 	State     SyncState
 	BlockHash types.Hash
+	FirstSeen int64
 }
 
 type InternalSyncMessage struct {
@@ -292,6 +293,7 @@ func (s *ChainSynchroizer) handleResponseStatusMessage(from types.Address, m *Re
 			Height:    m.Height,
 			State:     SyncState(m.State),
 			BlockHash: m.CurrentBlockHash,
+			FirstSeen: time.Now().UnixNano(),
 		}
 		s.availablePeers.Put(from, nps)
 		_ = s.logger.Log("msg", "updated sync peer", "peer_address", nps.Address.ShortString(8), "peer_height", m.Height)
@@ -445,7 +447,7 @@ func (s *ChainSynchroizer) synchronize() {
 		return
 	}
 
-	s.removeBehindPeers()
+	s.pruneStalePeers()
 
 	bestPeer := s.findBestPeer()
 
@@ -474,8 +476,10 @@ func (s *ChainSynchroizer) synchronize() {
 		_ = s.logger.Log("msg", "changed state", "state", s.state.Get())
 		return
 	} else {
-		s.state.Set(Synchronized)
-		_ = s.logger.Log("msg", "changed state", "state", s.state.Get())
+		if !s.state.Eq(Synchronized) {
+			s.state.Set(Synchronized)
+			_ = s.logger.Log("msg", "changed state", "state", s.state.Get())
+		}
 	}
 
 	_ = s.logger.Log("state", s.state.Get(), "available_peers", s.availablePeers.Len())
@@ -507,20 +511,19 @@ func (s *ChainSynchroizer) findBestPeer() *PeerState {
 	return bestPeers[randomIndex]
 }
 
-func (s *ChainSynchroizer) removeBehindPeers() {
-	currentHeight := s.chain.GetCurrentHeight()
-	thresholdHeight := uint64(float64(currentHeight) * 0.8) // 20%
+func (s *ChainSynchroizer) pruneStalePeers() {
+	thresholdTime := time.Now().Add(-1 * time.Minute).UnixNano()
+	stalePeers := make([]types.Address, 0)
 
-	behindPeers := make([]*PeerState, 0)
 	s.availablePeers.Range(func(addr types.Address, state *PeerState) bool {
-		if state.Height < thresholdHeight {
-			behindPeers = append(behindPeers, state)
+		if state.FirstSeen <= thresholdTime {
+			stalePeers = append(stalePeers, addr)
 		}
 		return true
 	})
 
-	for _, peer := range behindPeers {
-		s.availablePeers.Remove(peer.Address)
+	for _, addr := range stalePeers {
+		s.availablePeers.Remove(addr)
 	}
 }
 
