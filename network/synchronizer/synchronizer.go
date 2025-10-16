@@ -172,12 +172,18 @@ func (s *ChainSynchroizer) NotifyForkDetected(from types.Address, b *block.Block
 }
 
 func (s *ChainSynchroizer) NotifyChainLagging() {
-	if s.state.Eq(Idle) || s.state.Eq(Synchronized) {
-		_ = s.logger.Log("msg", "received chain lagging notification")
-
-		s.state.Set(Idle)
-		s.synchronize()
+	if s.state.Eq(SyncingBlocks) {
+		return
 	}
+	_ = s.logger.Log("msg", "received chain lagging notification. broadcast request status message")
+
+	s.state.Set(SyncingBlocks)
+	_ = s.logger.Log("msg", "changed state", "state", s.state.Get())
+
+	msg := &BroadcastMessage{
+		Message: &RequestStatusMessage{},
+	}
+	s.sendToOutgoing(msg)
 }
 
 func (s *ChainSynchroizer) Stop() {
@@ -442,8 +448,11 @@ func (s *ChainSynchroizer) handleResponseBlocksMessage(from types.Address, m *Re
 }
 
 func (s *ChainSynchroizer) synchronize() {
-	currentState := s.state.Get()
-	if currentState != Idle && currentState != Synchronized {
+	//currentState := s.state.Get()
+	//if currentState != Idle && currentState != Synchronized {
+	//	return
+	//}
+	if s.state.Eq(ResolvingFork) || s.state.Eq(Terminated) {
 		return
 	}
 
@@ -512,7 +521,7 @@ func (s *ChainSynchroizer) findBestPeer() *PeerState {
 }
 
 func (s *ChainSynchroizer) pruneStalePeers() {
-	thresholdTime := time.Now().Add(-1 * time.Minute).UnixNano()
+	thresholdTime := time.Now().Add(-30 * time.Second).UnixNano()
 	stalePeers := make([]types.Address, 0)
 
 	s.availablePeers.Range(func(addr types.Address, state *PeerState) bool {

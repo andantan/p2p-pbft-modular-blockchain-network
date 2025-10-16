@@ -3,6 +3,7 @@ package server
 import (
 	"github.com/andantan/modular-blockchain/core/block"
 	"github.com/andantan/modular-blockchain/network/provider"
+	"github.com/andantan/modular-blockchain/network/synchronizer"
 	"github.com/andantan/modular-blockchain/types"
 	"github.com/andantan/modular-blockchain/util"
 	"github.com/go-kit/log"
@@ -77,4 +78,38 @@ func (m *MockApiServer) ConsumeTransaction() <-chan *block.Transaction {
 
 func (m *MockApiServer) Stop() {
 	close(m.MockTxCh)
+}
+
+type MockSynchronizer struct{}
+
+func GenerateMockSynchronizer() *MockSynchronizer {
+	return &MockSynchronizer{}
+}
+
+func (m MockSynchronizer) Start() {
+	panic("implement me")
+}
+
+func (m MockSynchronizer) HandleMessage(address types.Address, message synchronizer.SyncMessage) {
+	panic("implement me")
+}
+
+func (m MockSynchronizer) OutgoingMessage() <-chan synchronizer.SynchronizerMessage {
+	panic("implement me")
+}
+
+func (m MockSynchronizer) IsSynchronized() bool {
+	return true
+}
+
+func (m MockSynchronizer) NotifyForkDetected(address types.Address, b *block.Block) {
+	panic("implement me")
+}
+
+func (m MockSynchronizer) NotifyChainLagging() {
+	panic("implement me")
+}
+
+func (m MockSynchronizer) Stop() {
+	panic("implement me")
 }

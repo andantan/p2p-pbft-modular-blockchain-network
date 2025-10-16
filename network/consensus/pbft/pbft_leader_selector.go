@@ -12,6 +12,10 @@ func NewPbftLeaderSelector() *PbftLeaderSelector {
 }
 
 func (s *PbftLeaderSelector) SelectLeader(validators []types.Address, round uint64) types.Address {
+	if len(validators) == 0 {
+		return types.Address{}
+	}
+
 	sort.Slice(validators, func(i, j int) bool {
 		return validators[i].Lte(validators[j])
 	})
